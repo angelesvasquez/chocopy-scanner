@@ -233,7 +233,7 @@ void Scanner::scan() {
             check_token(token_buffer);
         }
         else if (on_comment) {
-            while (value_char != '\n') {
+            while (value_char != '\n' && value_char != '\0') {
                 token_buffer += value_char;
                 value_char = get_char();
             }
