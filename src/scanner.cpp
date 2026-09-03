@@ -241,7 +241,7 @@ void Scanner::scan() {
             on_comment = false;
         }
         else if (on_string) {
-            while (value_char != '"') {
+            while (value_char != '"' && value_char != '\n') {
                 if (value_char == '\\') {
                     value_char = get_char();
                     if (value_char == '"') {
@@ -250,8 +250,16 @@ void Scanner::scan() {
                         continue;
                     }
                 }
+                
                 token_buffer += value_char;
                 value_char = get_char();
+            }
+
+            if (value_char == '\n') {
+                cout << "STRING NO CERRADO: " << token_buffer << endl;
+                on_string = false;
+                token_buffer.clear();
+                continue;
             }
             token_buffer += value_char;
             check_token(token_buffer);
