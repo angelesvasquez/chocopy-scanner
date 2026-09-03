@@ -143,6 +143,7 @@ void Scanner::scan() {
     bool on_check_indent = false;
 
     while (true) {
+    
         if (KEYWORDS.find(string(1, value_char)) != KEYWORDS.end() && !on_comment && !on_string) {
             if (!token_buffer.empty()) {
                 check_token(token_buffer);
@@ -174,6 +175,7 @@ void Scanner::scan() {
             }
 
             token_buffer += value_char;
+
             char last_value_char = value_char;
             value_char = get_char();
 
@@ -184,6 +186,7 @@ void Scanner::scan() {
             if (last_value_char == '/') {
                 if (value_char == '/') {
                     token_buffer += value_char;
+                    value_char = get_char();
                 }
                 else {
                     // TODO: enviar error
@@ -193,6 +196,7 @@ void Scanner::scan() {
             else if (last_value_char == '!') {
                 if (value_char == '=') {
                     token_buffer += value_char;
+                    value_char = get_char();
                 }
                 else {
                     // TODO: enviar error
@@ -202,25 +206,28 @@ void Scanner::scan() {
             else if (last_value_char == '=') {
                 if (value_char == '=') {
                     token_buffer += value_char;
+                    value_char = get_char();
                 }
             }
             else if (last_value_char == '<') {
                 if (value_char == '=') {
                     token_buffer += value_char;
+                    value_char = get_char();
                 }
             }
             else if (last_value_char == '>') {
                 if (value_char == '=') {
                     token_buffer += value_char;
+                    value_char = get_char();
                 }
             }
             else if (last_value_char == '-') {
                 if (value_char == '>') {
                     token_buffer += value_char;
+                    value_char = get_char();
                 }
             }
 
-            value_char = get_char();
             check_token(token_buffer);
         }
         else if (on_comment) {
@@ -255,31 +262,24 @@ void Scanner::scan() {
                 value_char = get_char();
             }
         }
-        else if (value_char == ' ' || (on_check_indent && value_char != ' ')) {
+        else if (value_char == ' ') {
             if (!token_buffer.empty()) {
                 check_token(token_buffer);
             }
+            value_char = get_char();
+
+        }
+        else if (value_char == '\t' || on_check_indent) {
             on_check_indent = false;
-            int space_counter = value_char == ' ' ? 1 : 0;
 
-            if (value_char == ' ')
+            if (value_char == '\t') {
                 value_char = get_char();
-
-            while (value_char == ' ') {
-                value_char = get_char();
-                space_counter++;
-
-                if (space_counter % 4 == 0) {
-                    indent_counter++;
-                    space_counter = 0;
-                }
+                indent_counter++;
             }
 
-            if (space_counter != 0) {
-                space_counter = 0;
-                indent_counter = 0;
-                //error
-                continue;
+            while (value_char == '\t') {
+                value_char = get_char();
+                indent_counter++;
             }
 
             if (indent_stack.top() < indent_counter) {
