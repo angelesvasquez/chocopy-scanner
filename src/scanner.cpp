@@ -272,11 +272,18 @@ void Scanner::scan() {
                 value_char = get_char();
             }
         }
-        else if (value_char == ' ' || on_check_indent) {
+        else if (value_char == ' ' || on_check_indent && value_char != '\0') {
             if (!token_buffer.empty()) {
                 check_token(token_buffer);
             }
+            char last_value_char = value_char;
+            value_char = get_char();
+
+            if (!on_check_indent) continue;
+
             on_check_indent = false;
+            if (last_value_char == ' ')
+                indent_counter++;
 
             while (value_char == ' ') {
                 value_char = get_char();
