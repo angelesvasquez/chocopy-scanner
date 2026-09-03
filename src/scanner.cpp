@@ -5,7 +5,8 @@
 #include <stack>
 #include <fstream>
 #include <sstream>
-#include < cctype >
+#include <cctype>
+#include <cstdint>
 
 using namespace std;
 
