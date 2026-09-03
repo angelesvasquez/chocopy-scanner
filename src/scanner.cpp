@@ -272,22 +272,13 @@ void Scanner::scan() {
                 value_char = get_char();
             }
         }
-        else if (value_char == ' ') {
+        else if (value_char == ' ' || on_check_indent) {
             if (!token_buffer.empty()) {
                 check_token(token_buffer);
             }
-            value_char = get_char();
-
-        }
-        else if (value_char == '\t' || on_check_indent) {
             on_check_indent = false;
 
-            if (value_char == '\t') {
-                value_char = get_char();
-                indent_counter++;
-            }
-
-            while (value_char == '\t') {
+            while (value_char == ' ') {
                 value_char = get_char();
                 indent_counter++;
             }
@@ -305,7 +296,7 @@ void Scanner::scan() {
                 }
                 if (indent_stack.top() != indent_counter) {
                     indent_counter = 0;
-                    //error
+                    cout << "ERROR DE INDENTACION" << endl;
                     continue;
                 }
             }
