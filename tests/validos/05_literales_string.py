@@ -1,0 +1,6 @@
+a: str = "hola mundo"
+b: str = "con comillas: \"citado\""
+c: str = "con salto: linea1\nlinea2"
+d: str = "con tab:\tfin"
+e: str = "con barra: \\ backslash"
+f: str = ""
