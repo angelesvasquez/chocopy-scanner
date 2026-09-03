@@ -1,0 +1,6 @@
+def funcion(a: int, b: int) -> int: #esto es un mishi
+    return "hola\"holaaa"
+
+my_variable: int = 18239
+
+#xyzxx
