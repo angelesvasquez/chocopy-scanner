@@ -1,8 +1,12 @@
+! @
 def funcion(a: int, b: int) -> int: #esto es un mishi
 	return "hola\"holaaa"
 	if ("hola" == my_string):
 		pass
 
+!
+
+/
 
 my_variable: int = 2147483647
 

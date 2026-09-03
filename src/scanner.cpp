@@ -5,7 +5,7 @@
 #include <stack>
 #include <fstream>
 #include <sstream>
-#include <climits>
+#include < cctype >
 
 using namespace std;
 
@@ -51,6 +51,7 @@ map<string, string> KEYWORDS = {
     {"-", "MINUS"},
     {"*", "STAR"},
     {"//", "DOUBLESLASH"},
+    {"/", "SINGLESLASH_INVALID"},
     {"%", "PERCENT"},
     {"<", "LESS"},
     {">", "GREATER"},
@@ -58,6 +59,7 @@ map<string, string> KEYWORDS = {
     {">=", "GREATEREQUAL"},
     {"==", "EQUALEQUAL"},
     {"!=", "NOTEQUAL"},
+    {"!", "NOT_INVALID"},
     {"=", "EQUAL"},
     {"(", "LPAREN"},
     {")", "RPAREN"},
@@ -143,7 +145,7 @@ void Scanner::scan() {
     bool on_check_indent = false;
 
     while (true) {
-    
+
         if (KEYWORDS.find(string(1, value_char)) != KEYWORDS.end() && !on_comment && !on_string) {
             if (!token_buffer.empty()) {
                 check_token(token_buffer);
@@ -162,7 +164,7 @@ void Scanner::scan() {
                 check_token(token_buffer);
                 row++;
                 col = 0;
-                
+
                 on_check_indent = true;
                 continue;
             }
@@ -189,8 +191,8 @@ void Scanner::scan() {
                     value_char = get_char();
                 }
                 else {
-                    // TODO: enviar error
-                    return;
+                    cout << "OPERADOR NO VALIDO: " << token_buffer << endl;
+                    token_buffer.clear();
                 }
             }
             else if (last_value_char == '!') {
@@ -199,8 +201,8 @@ void Scanner::scan() {
                     value_char = get_char();
                 }
                 else {
-                    // TODO: enviar error
-                    return;
+                    cout << "OPERADOR NO VALIDO: " << token_buffer << endl;
+                    token_buffer.clear();
                 }
             }
             else if (last_value_char == '=') {
@@ -305,8 +307,12 @@ void Scanner::scan() {
             check_token(token_buffer);
             break;
         }
-        else {
+        else if (isalpha(static_cast<unsigned char>(value_char)) || value_char == '_') {
             token_buffer.push_back(value_char);
+            value_char = get_char();
+        }
+        else {
+            cout << "CARACTER NO VALIDO: " << value_char << endl;
             value_char = get_char();
         }
 
