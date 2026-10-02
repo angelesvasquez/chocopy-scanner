@@ -1,3 +1,5 @@
+// LR1
+
 #include "Grammar.cpp"
 #include <iostream>
 #include <vector>
@@ -35,11 +37,25 @@ struct FirstSet {
 using FirstTable = unordered_map<Symbol, FirstSet>;
 using State = set<Item>;
 
+enum TypeAction { Shift, Reduce, Accept};
+
+struct Action{
+	TypeAction type;
+	int v;
+
+	bool operator==(const Action& a) const {
+		return type == a.type && v == a.v;
+	}
+};
+
 class LR1 {
 	Grammar gr;
 	map<pair<int, int>, int> transitions;
 	vector<State> states;
 	FirstTable firsts;
+	// Action[Estado i,symbol] = Shift 7, Reduce 2, accept
+	map<pair<int, Symbol>, Action> action; 
+	map<pair<int, int>, int> gotoT;
 
 	void first() {
 		for (auto& sy : gr.symbolTable) {
@@ -96,7 +112,7 @@ class LR1 {
 		return result;
 	}
 
-	void closure(State& S) {
+	void clousure(State& S) {
 		bool changed = 1;
 		while (changed) {
 			changed = 0;
@@ -131,14 +147,14 @@ class LR1 {
 	}
 
 	State gotoState(State& S, Symbol x) {
-		State t; //
+		State t;
 		for (auto& item : S) {
 			Production& p = gr.productions[item.production];
 			if (item.dot < p.right.size() && p.right[item.dot] == x) {
 				t.insert({ item.production,item.dot + 1,item.lookahead });
 			}
 		}
-		if (!t.empty()) closure(t);
+		if (!t.empty()) clousure(t);
 		return t;
 	}
 
@@ -148,7 +164,7 @@ class LR1 {
 		Symbol eof = gr.getSymbol("eof");
 		State CC0 = { {0,0,eof} };
 
-		closure(CC0);
+		clousure(CC0);
 		states.push_back(CC0);
 
 		for (int i = 0; i < states.size(); i++) {
@@ -176,12 +192,86 @@ class LR1 {
 		}
 	}
 
-	
+
+
 public:
 	LR1(Grammar g) : gr(g) {
 		gr.augment();
 		first();
 		canonicalCollection();
+	}
+
+	void printItem(const Item& item) {
+		const auto& prod = gr.productions[item.production];
+		cout << "  [" << gr.symbolTable[prod.left].name << " -> ";
+		for (int i = 0; i <= prod.right.size(); ++i) {
+			if ((int)i == item.dot) cout << ". ";
+			if (i < prod.right.size()) cout << gr.symbolTable[prod.right[i]].name << " ";
+		}
+		cout << ", " << gr.symbolTable[item.lookahead].name << "]\n";
+	}
+
+	bool setAction(int i, Symbol s, TypeAction t, int j = 0) {
+		Action newAction = { t,j };
+		if (action.find({ i,s }) == action.end()) {
+			action[{i, s}] = newAction;
+			return 1;
+		}
+		
+		if (action[{i, s}] == newAction) return 1;
+
+		bool shift = action[{i,s}].type == Shift|| newAction.type == Shift;
+		cout << "CONFLICTO " << (shift ? "shift/reduce" : "reduce/reduce") << " en estado " << i << ", simbolo " << gr.symbolTable[s].name << endl;
+
+		for (const Item& it : states[i]) {
+			const Production& p = gr.productions[it.production];
+			bool red = it.dot >= (int)p.right.size() && it.lookahead == s;
+			bool sh = it.dot < (int)p.right.size() && p.right[it.dot] == s;
+			if (red || sh) printItem(it);
+		}
+		return 0;
+	}
+
+	bool fillTable() {
+		bool NoConflict = 1;
+		Symbol eof = gr.getSymbol("eof");
+		for (int i = 0; i < states.size(); i++) {
+
+			for (auto& item : states[i]) {
+				Production& p = gr.productions[item.production];
+
+				if (item.dot >= p.right.size() && p.left != gr.symbolTable.size()-2) {
+					if(!setAction(i, item.lookahead, Reduce, item.production)) NoConflict = 0;  // conflicto
+					continue;
+				}
+				if (item.dot >= p.right.size() && item.lookahead == eof) {
+					setAction(i, eof, Accept);
+					continue;
+				}
+				// Ante un terminal
+				/*Symbol c = p.right[item.dot];
+				if (gr.symbolTable[c].terminal) {
+					if(!setAction(i, c, Shift, transitions[{i, c}])) conflict = 0;
+				}
+				else {
+					gotoT[{i, c}] = transitions[{i, c}];
+				}*/
+
+			}
+		}
+
+		for (auto& t : transitions) {
+			int i = t.first.first;
+			Symbol c = t.first.second;
+			if (gr.symbolTable[c].terminal) {
+				if (!setAction(i, c, Shift, t.second)) NoConflict = 0;
+			}
+			else {
+				gotoT[{i, c}] = t.second;
+			}
+		}
+
+		return NoConflict;
 	}
 
 	void printFirsts() {
@@ -239,15 +329,49 @@ public:
 			cout << "(CC" << t.first.first << ", " << gr.symbolTable[t.first.second].name
 			<< ") --> CC" << t.second << "\n";
 	}
+	
+	void printTables() {
+		vector<Symbol> terms, nonterms;
+		for (int s = 0; s < (int)gr.symbolTable.size(); s++) {
+			if (s == gr.symbolTable.size()-2) continue;
+			(gr.symbolTable[s].terminal ? terms : nonterms).push_back(s);
+		}
+		cout << "\n---- ACTION | GOTO ----\n\nEstado";
+		for (Symbol t : terms)    cout << "\t" << gr.symbolTable[t].name;
+		cout << " |";
+		for (Symbol n : nonterms) cout << "\t" << gr.symbolTable[n].name;
+		cout << "\n";
+		for (int i = 0; i < (int)states.size(); i++) {
+			cout << i;
+			for (Symbol t : terms) {
+				cout << "\t";
+				auto it = action.find({ i, (int)t });
+				if (it != action.end()) {
+					if (it->second.type == Shift)  cout << "s" << it->second.v;
+					if (it->second.type == Reduce) cout << "r" << it->second.v;
+					if (it->second.type == Accept) cout << "acc";
+				}
+			}
+			for (Symbol n : nonterms) {
+				cout << "\t";
+				auto it = gotoT.find({ i, (int)n });
+				if (it != gotoT.end()) cout << it->second;
+			}
+			cout << "\n";
+		}
+	}
+
 };
 
+
 int main() {
-	Grammar gr;
-	gr.loadFile("input.txt");
-	LR1 lr(gr);
+	Grammar g;
+	g.loadFile("input.txt");
+	LR1 lr(g);
 	lr.printGrammar();
 	lr.printFirsts();
 	lr.printStates();
-
+	if(!lr.fillTable()) return 1;
+	lr.printTables();
 	return 0;
 }
