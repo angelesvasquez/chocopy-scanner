@@ -142,7 +142,7 @@ class LR1 {
 		return t;
 	}
 
-	void collecionCanonica() {
+	void canonicalCollection() {
 
 		Symbol start = gr.productions[0].left;
 		Symbol eof = gr.getSymbol("eof");
@@ -181,7 +181,7 @@ public:
 	LR1(Grammar g) : gr(g) {
 		gr.augment();
 		first();
-		collecionCanonica();
+		canonicalCollection();
 	}
 
 	void printFirsts() {
