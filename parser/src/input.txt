@@ -1,8 +1,4 @@
-Expr -> Expr - Term
-Expr -> Term
-Term -> Term x Factor
-Term -> Term / Factor
-Term -> Factor
-Factor -> ( Expr )
-Factor -> num
-Factor -> name
+List -> List Pair
+List -> Pair
+Pair -> ( Pair )
+Pair -> ( )

@@ -1,5 +1,3 @@
-// LR1 leer gramatica
-
 #include <iostream>
 #include <map>
 #include <stack>
@@ -41,6 +39,18 @@ public:
 		}
 		return symbolMap[name];
 	}
+
+	void augment() {
+		Symbol originalStart = productions[0].left;
+		string name = symbolTable[originalStart].name;
+
+		Symbol id = getSymbol(name + "'", false);
+
+		productions.insert(productions.begin(), { id, {originalStart} });
+
+		getSymbol("eof", true);
+	}
+
 	bool loadFile(string filename) {
 		ifstream file(filename);
 		if (!file.is_open()) {
@@ -61,11 +71,11 @@ public:
 
 			string rightStr;
 			while (ss >> rightStr) {
+				if (rightStr == "''") continue;
 				Symbol id = getSymbol(rightStr, 1);
 				prod.right.push_back(id);
 			}
 			productions.push_back(prod);
-			// agregar el EOF
 		}
 		file.close();
 		return 1;
@@ -77,10 +87,10 @@ public:
 		// }
 
 		cout << "\n--- PRODUCCIONES ---\n";
-		for (const auto& prod : productions) {
-			cout << symbolTable[prod.left].name << " -> ";
-
-			for (Symbol sym : prod.right) {
+		for (int i = 0; i < productions.size(); i++) {
+			cout << "(" << i << ") " << symbolTable[productions[i].left].name << " -> ";
+			if (productions[i].right.empty()) cout << "''";
+			for (Symbol sym : productions[i].right) {
 				cout << symbolTable[sym].name << " ";
 			}
 			cout << "\n";
