@@ -1,4 +1,4 @@
-# ChocoPy
+# Proyecto Compiladores
 
 Implementación de scanner léxico y parser LR(1), en C++.
 
