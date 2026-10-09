@@ -543,7 +543,7 @@ int main() {
 	bool ok = lr.fillTable();
 	lr.printTables();
 
-	lr.exportJSON("../visualization/lr1.json");
-	lr.exportJS("../visualization/data.js");
+	lr.exportJSON("../visualizer/lr1.json");
+	lr.exportJS("../visualizer/data.js");
 	return ok ? 0 : 1;
 }
