@@ -58,7 +58,7 @@ Estos incluyen casos válidos y casos con errores léxicos, como cadenas sin cer
 
 ## Autores
 
-- Daniela Perales estrada
+- Daniela Perales Estrada
 
 - José Gabriel Cornejo Castro
 
