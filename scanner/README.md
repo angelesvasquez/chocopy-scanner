@@ -55,11 +55,3 @@ El scanner reconoce, entre otros:
 Los casos de prueba se encuentran en la carpeta `tests/`.
 
 Estos incluyen casos válidos y casos con errores léxicos, como cadenas sin cerrar, operadores inválidos y errores de indentación.
-
-## Autores
-
-- Daniela Perales Estrada
-
-- José Gabriel Cornejo Castro
-
-- María de los Angeles Vásquez Pineda

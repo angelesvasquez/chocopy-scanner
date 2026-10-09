@@ -90,9 +90,3 @@ en conflicto resaltadas y los conflictos con sus causas.
 En `tests/` hay gramáticas de paréntesis, conflicto shift/reduce,
 conflicto reduce/reduce y producciones vacías. Para probar una, copiar su
 `input.txt` a `src/` y ejecutar el parser.
-
-## Autores
-
-- Daniela Perales Estrada
-- José Gabriel Cornejo Castro
-- María de los Angeles Vásquez Pineda
