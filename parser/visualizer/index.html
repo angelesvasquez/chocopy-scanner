@@ -411,10 +411,6 @@
             <button class="tab" id="tabConf" data-panel="p-conf">Conflictos</button>
         </div>
         <div class="spacer"></div>
-        <label class="btn">
-            <!--Cargar lr1.json-->
-            <input type="file" id="file" accept=".json,application/json" hidden>
-        </label>
         <button class="btn" id="fit">Ajustar</button>
         <button class="btn" id="zin">+</button>
         <button class="btn" id="zout">−</button>
@@ -437,8 +433,8 @@
             <div class="legend">Arrastra los estados · Rueda = zoom · Fondo = desplazar</div>
             <div id="empty">
                 <div>No se pudieron cargar los datos automáticamente.</div>
-                <div>Ejecuta el programa de C++ para generar <code>data.js</code> / <code>lr1.json</code>,</div>
-                <div>o cárgalo manualmente con el botón <b>Cargar lr1.json</b>.</div>
+                <div>Ejecuta el programa de C++ para generar <code>data.js</code> junto a este archivo,</div>
+                <div>y recarga la página.</div>
             </div>
         </section>
 
@@ -452,514 +448,521 @@
     <script src="data.js" onerror="window.__noDataJs = true;"></script>
 
     <script>
-const NS = 'http://www.w3.org/2000/svg';
-const $  = s => document.querySelector(s);
-const svg = $('#svg'), viewport = $('#viewport');
-const edgesLayer = $('#edges'), nodesLayer = $('#nodes');
+        const NS = 'http://www.w3.org/2000/svg';
+        const $ = s => document.querySelector(s);
+        const svg = $('#svg'), viewport = $('#viewport');
+        const edgesLayer = $('#edges'), nodesLayer = $('#nodes');
 
-let DATA = null;
-let SYM  = {};
-let boxes = [];
-let view = {x:0, y:0, k:1};
+        let DATA = null;
+        let SYM = {};
+        let boxes = [];
+        let view = { x: 0, y: 0, k: 1 };
 
-const symName = id => (SYM[id] ? SYM[id].name : '?' + id);
-const isTerm  = id => (SYM[id] ? SYM[id].terminal : false);
-const symIdByName = name => {
-  for (const k in SYM) if (SYM[k].name === name) return +k;
-  return null;
-};
+        const symName = id => (SYM[id] ? SYM[id].name : '?' + id);
+        const isTerm = id => (SYM[id] ? SYM[id].terminal : false);
+        const symIdByName = name => {
+            for (const k in SYM) if (SYM[k].name === name) return +k;
+            return null;
+        };
 
-function itemText(it) {
-  const p = DATA.productions[it.production];
-  let rhs = '';
-  for (let i = 0; i <= p.right.length; i++) {
-    if (i === it.dot) rhs += '\u2022 ';
-    if (i < p.right.length) rhs += symName(p.right[i]) + ' ';
-  }
-  return symName(p.left) + ' \u2192 ' + rhs + ', ' + symName(it.lookahead);
-}
+        function itemText(it) {
+            const p = DATA.productions[it.production];
+            let rhs = '';
+            for (let i = 0; i <= p.right.length; i++) {
+                if (i === it.dot) rhs += '\u2022 ';
+                if (i < p.right.length) rhs += symName(p.right[i]) + ' ';
+            }
+            return symName(p.left) + ' \u2192 ' + rhs + ', ' + symName(it.lookahead);
+        }
 
-function load(json) {
-  DATA = json;
-  SYM = {};
-  json.symbols.forEach(s => SYM[s.id] = s);
-  $('#empty').style.display = 'none';
-  buildBoxes();
-  layout();
-  renderAll();
-  renderPanels();
-  fit();
+        function load(json) {
+            DATA = json;
+            SYM = {};
+            json.symbols.forEach(s => SYM[s.id] = s);
+            $('#empty').style.display = 'none';
+            buildBoxes();
+            layout();
+            renderAll();
+            renderPanels();
+            fit();
 
-  const nConf = (json.conflicts || []).length;
-  const tabConf = $('#tabConf');
-  if (nConf > 0) {
-    tabConf.textContent = 'Conflictos (' + nConf + ')';
-    tabConf.classList.add('err');
-  } else {
-    tabConf.textContent = 'Conflictos';
-    tabConf.classList.remove('err');
-  }
-}
+            const nConf = (json.conflicts || []).length;
+            const tabConf = $('#tabConf');
+            if (nConf > 0) {
+                tabConf.textContent = 'Conflictos (' + nConf + ')';
+                tabConf.classList.add('err');
+            } else {
+                tabConf.textContent = 'Conflictos';
+                tabConf.classList.remove('err');
+            }
+        }
 
-function buildBoxes() {
-  boxes = DATA.states.map(st => {
-    const lines = st.items.map(itemText);
-    const maxLen = Math.max(6, ...lines.map(l => l.length));
-    return {
-      id: st.id, lines,
-      w: Math.ceil(maxLen * 7.85) + 28,
-      h: lines.length * 18 + 20,
-      x: 0, y: 0
-    };
-  });
-}
+        function buildBoxes() {
+            boxes = DATA.states.map(st => {
+                const lines = st.items.map(itemText);
+                const maxLen = Math.max(6, ...lines.map(l => l.length));
+                return {
+                    id: st.id, lines,
+                    w: Math.ceil(maxLen * 7.85) + 28,
+                    h: lines.length * 18 + 20,
+                    x: 0, y: 0
+                };
+            });
+        }
 
-function layout() {
-  const n = DATA.states.length;
-  const adj = Array.from({length: n}, () => []);
-  DATA.transitions.forEach(t => adj[t.from].push(t.to));
+        function layout() {
+            const n = DATA.states.length;
+            const adj = Array.from({ length: n }, () => []);
+            DATA.transitions.forEach(t => adj[t.from].push(t.to));
 
-  const level = new Array(n).fill(-1);
-  level[0] = 0;
-  const q = [0];
-  for (let h = 0; h < q.length; h++) {
-    const u = q[h];
-    for (const v of adj[u]) if (level[v] < 0) { level[v] = level[u] + 1; q.push(v); }
-  }
-  let maxL = 0;
-  level.forEach(l => { if (l > maxL) maxL = l; });
-  for (let i = 0; i < n; i++) if (level[i] < 0) level[i] = maxL + 1;
+            const level = new Array(n).fill(-1);
+            level[0] = 0;
+            const q = [0];
+            for (let h = 0; h < q.length; h++) {
+                const u = q[h];
+                for (const v of adj[u]) if (level[v] < 0) { level[v] = level[u] + 1; q.push(v); }
+            }
+            let maxL = 0;
+            level.forEach(l => { if (l > maxL) maxL = l; });
+            for (let i = 0; i < n; i++) if (level[i] < 0) level[i] = maxL + 1;
 
-  const cols = [];
-  boxes.forEach(b => { (cols[level[b.id]] ||= []).push(b); });
+            const cols = [];
+            boxes.forEach(b => { (cols[level[b.id]] ||= []).push(b); });
 
-  const gapX = 130, gapY = 40;
-  const colX = [];
-  let x = 0;
-  for (let L = 0; L < cols.length; L++) {
-    const c = cols[L];
-    if (!c) { colX[L] = x; continue; }
-    const w = Math.max(...c.map(b => b.w));
-    colX[L] = x + w / 2;
-    x += w + gapX;
-  }
-  for (let L = 0; L < cols.length; L++) {
-    const c = cols[L];
-    if (!c) continue;
-    const totalH = c.reduce((s, b) => s + b.h, 0) + gapY * (c.length - 1);
-    let y = -totalH / 2;
-    c.forEach(b => { b.x = colX[L]; b.y = y + b.h / 2; y += b.h + gapY; });
-  }
-}
+            const gapX = 130, gapY = 40;
+            const colX = [];
+            let x = 0;
+            for (let L = 0; L < cols.length; L++) {
+                const c = cols[L];
+                if (!c) { colX[L] = x; continue; }
+                const w = Math.max(...c.map(b => b.w));
+                colX[L] = x + w / 2;
+                x += w + gapX;
+            }
+            for (let L = 0; L < cols.length; L++) {
+                const c = cols[L];
+                if (!c) continue;
+                const totalH = c.reduce((s, b) => s + b.h, 0) + gapY * (c.length - 1);
+                let y = -totalH / 2;
+                c.forEach(b => { b.x = colX[L]; b.y = y + b.h / 2; y += b.h + gapY; });
+            }
+        }
 
-function renderAll() {
-  edgesLayer.innerHTML = '';
-  nodesLayer.innerHTML = '';
+        function renderAll() {
+            edgesLayer.innerHTML = '';
+            nodesLayer.innerHTML = '';
 
-  boxes.forEach(b => {
-    const g = document.createElementNS(NS, 'g');
-    g.setAttribute('class', 'state');
-    g.setAttribute('transform', `translate(${b.x},${b.y})`);
+            boxes.forEach(b => {
+                const g = document.createElementNS(NS, 'g');
+                g.setAttribute('class', 'state');
+                g.setAttribute('transform', `translate(${b.x},${b.y})`);
 
-    const r = document.createElementNS(NS, 'rect');
-    r.setAttribute('x', -b.w/2); r.setAttribute('y', -b.h/2);
-    r.setAttribute('width', b.w); r.setAttribute('height', b.h);
-    r.setAttribute('rx', 7);
-    g.appendChild(r);
+                const r = document.createElementNS(NS, 'rect');
+                r.setAttribute('x', -b.w / 2); r.setAttribute('y', -b.h / 2);
+                r.setAttribute('width', b.w); r.setAttribute('height', b.h);
+                r.setAttribute('rx', 7);
+                g.appendChild(r);
 
-    const title = document.createElementNS(NS, 'text');
-    title.setAttribute('class', 'title');
-    title.setAttribute('text-anchor', 'middle');
-    title.setAttribute('x', 0);
-    title.setAttribute('y', -b.h/2 - 8);
-    title.textContent = 'I' + b.id;
-    g.appendChild(title);
+                const title = document.createElementNS(NS, 'text');
+                title.setAttribute('class', 'title');
+                title.setAttribute('text-anchor', 'middle');
+                title.setAttribute('x', 0);
+                title.setAttribute('y', -b.h / 2 - 8);
+                title.textContent = 'I' + b.id;
+                g.appendChild(title);
 
-    const body = document.createElementNS(NS, 'text');
-    body.setAttribute('text-anchor', 'middle');
-    b.lines.forEach((ln, i) => {
-      const ts = document.createElementNS(NS, 'tspan');
-      ts.setAttribute('x', 0);
-      ts.setAttribute('y', -b.h/2 + 20 + i * 18);
-      ts.textContent = ln;
-      body.appendChild(ts);
-    });
-    g.appendChild(body);
+                const body = document.createElementNS(NS, 'text');
+                body.setAttribute('text-anchor', 'middle');
+                b.lines.forEach((ln, i) => {
+                    const ts = document.createElementNS(NS, 'tspan');
+                    ts.setAttribute('x', 0);
+                    ts.setAttribute('y', -b.h / 2 + 20 + i * 18);
+                    ts.textContent = ln;
+                    body.appendChild(ts);
+                });
+                g.appendChild(body);
 
-    g.addEventListener('mouseenter', () => highlight(b.id));
-    g.addEventListener('mouseleave', () => highlight(null));
+                g.addEventListener('mouseenter', () => highlight(b.id));
+                g.addEventListener('mouseleave', () => highlight(null));
 
-    nodesLayer.appendChild(g);
-    makeDraggable(g, b);
-  });
+                nodesLayer.appendChild(g);
+                makeDraggable(g, b);
+            });
 
-  drawEdges();
-}
+            drawEdges();
+        }
 
-function clip(box, target) {
-  const dx = target.x - box.x, dy = target.y - box.y;
-  const hw = box.w / 2 + 3, hh = box.h / 2 + 3;
-  if (dx === 0 && dy === 0) return {x: box.x, y: box.y};
-  const sx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
-  const sy = dy !== 0 ? hh / Math.abs(dy) : Infinity;
-  const s = Math.min(sx, sy);
-  return {x: box.x + dx * s, y: box.y + dy * s};
-}
+        function clip(box, target) {
+            const dx = target.x - box.x, dy = target.y - box.y;
+            const hw = box.w / 2 + 3, hh = box.h / 2 + 3;
+            if (dx === 0 && dy === 0) return { x: box.x, y: box.y };
+            const sx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+            const sy = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+            const s = Math.min(sx, sy);
+            return { x: box.x + dx * s, y: box.y + dy * s };
+        }
 
-function addLabel(x, y, text, from, to) {
-  const t = document.createElementNS(NS, 'text');
-  t.setAttribute('class', 'elabel');
-  t.setAttribute('text-anchor', 'middle');
-  t.setAttribute('x', x);
-  t.setAttribute('y', y);
-  t.dataset.from = from;
-  t.dataset.to = to;
-  t.textContent = text;
-  edgesLayer.appendChild(t);
-}
+        function addLabel(x, y, text, from, to) {
+            const t = document.createElementNS(NS, 'text');
+            t.setAttribute('class', 'elabel');
+            t.setAttribute('text-anchor', 'middle');
+            t.setAttribute('x', x);
+            t.setAttribute('y', y);
+            t.dataset.from = from;
+            t.dataset.to = to;
+            t.textContent = text;
+            edgesLayer.appendChild(t);
+        }
 
-function drawEdges() {
-  edgesLayer.innerHTML = '';
+        function drawEdges() {
+            edgesLayer.innerHTML = '';
 
-  const pairs = new Map();
-  for (const t of DATA.transitions) {
-    const k = t.from + '|' + t.to;
-    if (!pairs.has(k)) pairs.set(k, []);
-    pairs.get(k).push(t);
-  }
+            const pairs = new Map();
+            for (const t of DATA.transitions) {
+                const k = t.from + '|' + t.to;
+                if (!pairs.has(k)) pairs.set(k, []);
+                pairs.get(k).push(t);
+            }
 
-  for (const [k, list] of pairs) {
-    const [f, to] = k.split('|').map(Number);
-    const a = boxes[f], b = boxes[to];
+            for (const [k, list] of pairs) {
+                const [f, to] = k.split('|').map(Number);
+                const a = boxes[f], b = boxes[to];
 
-    if (f === to) {
-      list.forEach((t, i) => selfLoop(a, t, i, list.length));
-      continue;
-    }
+                if (f === to) {
+                    list.forEach((t, i) => selfLoop(a, t, i, list.length));
+                    continue;
+                }
 
-    list.forEach((t, i) => {
-      const off = (i - (list.length - 1) / 2) * 30;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      const L = Math.hypot(dx, dy) || 1;
-      const px = -dy / L, py = dx / L;
+                list.forEach((t, i) => {
+                    const off = (i - (list.length - 1) / 2) * 30;
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const L = Math.hypot(dx, dy) || 1;
+                    const px = -dy / L, py = dx / L;
 
-      const A = {x: a.x + px * off, y: a.y + py * off};
-      const B = {x: b.x + px * off, y: b.y + py * off};
-      const p1 = clip(a, B), p2 = clip(b, A);
+                    const A = { x: a.x + px * off, y: a.y + py * off };
+                    const B = { x: b.x + px * off, y: b.y + py * off };
+                    const p1 = clip(a, B), p2 = clip(b, A);
 
-      const path = document.createElementNS(NS, 'path');
-      path.setAttribute('class', 'edge');
-      path.setAttribute('d', `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`);
-      path.dataset.from = f;
-      path.dataset.to = to;
-      edgesLayer.appendChild(path);
+                    const path = document.createElementNS(NS, 'path');
+                    path.setAttribute('class', 'edge');
+                    path.setAttribute('d', `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`);
+                    path.dataset.from = f;
+                    path.dataset.to = to;
+                    edgesLayer.appendChild(path);
 
-      addLabel((p1.x + p2.x) / 2, (p1.y + p2.y) / 2 - 5, symName(t.symbol), f, to);
-    });
-  }
-}
+                    addLabel((p1.x + p2.x) / 2, (p1.y + p2.y) / 2 - 5, symName(t.symbol), f, to);
+                });
+            }
+        }
 
-function selfLoop(b, t, i, n) {
-  const top = b.y - b.h / 2;
-  const r = 46 + i * 28;
-  const w = Math.min(b.w * 0.3, 42);
+        function selfLoop(b, t, i, n) {
+            const top = b.y - b.h / 2;
+            const r = 46 + i * 28;
+            const w = Math.min(b.w * 0.3, 42);
 
-  const path = document.createElementNS(NS, 'path');
-  path.setAttribute('class', 'edge');
-  path.setAttribute('d',
-    `M ${b.x - w} ${top} ` +
-    `C ${b.x - w - 12} ${top - r} ${b.x + w + 12} ${top - r} ${b.x + w} ${top}`);
-  path.dataset.from = b.id;
-  path.dataset.to = b.id;
-  edgesLayer.appendChild(path);
+            const path = document.createElementNS(NS, 'path');
+            path.setAttribute('class', 'edge');
+            path.setAttribute('d',
+                `M ${b.x - w} ${top} ` +
+                `C ${b.x - w - 12} ${top - r} ${b.x + w + 12} ${top - r} ${b.x + w} ${top}`);
+            path.dataset.from = b.id;
+            path.dataset.to = b.id;
+            edgesLayer.appendChild(path);
 
-  addLabel(b.x, top - r * 0.78, symName(t.symbol), b.id, b.id);
-}
+            addLabel(b.x, top - r * 0.78, symName(t.symbol), b.id, b.id);
+        }
 
-function highlight(id) {
-  edgesLayer.querySelectorAll('.edge,.elabel').forEach(el => {
-    if (id == null) { el.classList.remove('dim', 'hot'); return; }
-    const on = (+el.dataset.from === id || +el.dataset.to === id);
-    el.classList.toggle('hot', on);
-    el.classList.toggle('dim', !on);
-  });
-}
+        function highlight(id) {
+            edgesLayer.querySelectorAll('.edge,.elabel').forEach(el => {
+                if (id == null) { el.classList.remove('dim', 'hot'); return; }
+                const on = (+el.dataset.from === id || +el.dataset.to === id);
+                el.classList.toggle('hot', on);
+                el.classList.toggle('dim', !on);
+            });
+        }
 
-function makeDraggable(g, b) {
-  g.style.cursor = 'move';
-  g.addEventListener('pointerdown', e => {
-    e.stopPropagation();
-    const rect = svg.getBoundingClientRect();
-    const start = {
-      x: (e.clientX - rect.left - view.x) / view.k,
-      y: (e.clientY - rect.top  - view.y) / view.k
-    };
-    const ox = b.x, oy = b.y;
-    g.setPointerCapture(e.pointerId);
+        function makeDraggable(g, b) {
+            g.style.cursor = 'move';
+            g.addEventListener('pointerdown', e => {
+                e.stopPropagation();
+                const rect = svg.getBoundingClientRect();
+                const start = {
+                    x: (e.clientX - rect.left - view.x) / view.k,
+                    y: (e.clientY - rect.top - view.y) / view.k
+                };
+                const ox = b.x, oy = b.y;
+                g.setPointerCapture(e.pointerId);
 
-    const move = ev => {
-      const p = {
-        x: (ev.clientX - rect.left - view.x) / view.k,
-        y: (ev.clientY - rect.top  - view.y) / view.k
-      };
-      b.x = ox + (p.x - start.x);
-      b.y = oy + (p.y - start.y);
-      g.setAttribute('transform', `translate(${b.x},${b.y})`);
-      drawEdges();
-    };
-    const up = ev => {
-      g.releasePointerCapture(ev.pointerId);
-      g.removeEventListener('pointermove', move);
-      g.removeEventListener('pointerup', up);
-    };
-    g.addEventListener('pointermove', move);
-    g.addEventListener('pointerup', up);
-  });
-}
+                const move = ev => {
+                    const p = {
+                        x: (ev.clientX - rect.left - view.x) / view.k,
+                        y: (ev.clientY - rect.top - view.y) / view.k
+                    };
+                    b.x = ox + (p.x - start.x);
+                    b.y = oy + (p.y - start.y);
+                    g.setAttribute('transform', `translate(${b.x},${b.y})`);
+                    drawEdges();
+                };
+                const up = ev => {
+                    g.releasePointerCapture(ev.pointerId);
+                    g.removeEventListener('pointermove', move);
+                    g.removeEventListener('pointerup', up);
+                };
+                g.addEventListener('pointermove', move);
+                g.addEventListener('pointerup', up);
+            });
+        }
 
-function applyView() {
-  viewport.setAttribute('transform',
-    `translate(${view.x},${view.y}) scale(${view.k})`);
-}
+        function applyView() {
+            viewport.setAttribute('transform',
+                `translate(${view.x},${view.y}) scale(${view.k})`);
+        }
 
-let panning = null;
-svg.addEventListener('pointerdown', e => {
-  if (e.target.closest('.state')) return;
-  panning = {sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y};
-  svg.classList.add('dragging');
-  svg.setPointerCapture(e.pointerId);
-});
-svg.addEventListener('pointermove', e => {
-  if (!panning) return;
-  view.x = panning.vx + (e.clientX - panning.sx);
-  view.y = panning.vy + (e.clientY - panning.sy);
-  applyView();
-});
-svg.addEventListener('pointerup', () => { panning = null; svg.classList.remove('dragging'); });
+        let panning = null;
+        svg.addEventListener('pointerdown', e => {
+            if (e.target.closest('.state')) return;
+            panning = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y };
+            svg.classList.add('dragging');
+            svg.setPointerCapture(e.pointerId);
+        });
+        svg.addEventListener('pointermove', e => {
+            if (!panning) return;
+            view.x = panning.vx + (e.clientX - panning.sx);
+            view.y = panning.vy + (e.clientY - panning.sy);
+            applyView();
+        });
+        svg.addEventListener('pointerup', () => { panning = null; svg.classList.remove('dragging'); });
 
-svg.addEventListener('wheel', e => {
-  e.preventDefault();
-  const r = svg.getBoundingClientRect();
-  const mx = e.clientX - r.left, my = e.clientY - r.top;
-  const k0 = view.k;
-  const k1 = Math.min(3, Math.max(0.12, k0 * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
-  view.x = mx - (mx - view.x) * (k1 / k0);
-  view.y = my - (my - view.y) * (k1 / k0);
-  view.k = k1;
-  applyView();
-}, {passive: false});
+        svg.addEventListener('wheel', e => {
+            e.preventDefault();
+            const r = svg.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const k0 = view.k;
+            const k1 = Math.min(3, Math.max(0.12, k0 * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+            view.x = mx - (mx - view.x) * (k1 / k0);
+            view.y = my - (my - view.y) * (k1 / k0);
+            view.k = k1;
+            applyView();
+        }, { passive: false });
 
-function fit() {
-  if (!boxes.length) return;
-  const minX = Math.min(...boxes.map(b => b.x - b.w / 2)) - 60;
-  const maxX = Math.max(...boxes.map(b => b.x + b.w / 2)) + 60;
-  const minY = Math.min(...boxes.map(b => b.y - b.h / 2)) - 80;
-  const maxY = Math.max(...boxes.map(b => b.y + b.h / 2)) + 60;
-  const r = svg.getBoundingClientRect();
-  const k = Math.min(r.width / (maxX - minX), r.height / (maxY - minY), 1.2);
-  view.k = k;
-  view.x = r.width  / 2 - k * (minX + maxX) / 2;
-  view.y = r.height / 2 - k * (minY + maxY) / 2;
-  applyView();
-}
+        function fit() {
+            if (!boxes.length) return;
+            const minX = Math.min(...boxes.map(b => b.x - b.w / 2)) - 60;
+            const maxX = Math.max(...boxes.map(b => b.x + b.w / 2)) + 60;
+            const minY = Math.min(...boxes.map(b => b.y - b.h / 2)) - 80;
+            const maxY = Math.max(...boxes.map(b => b.y + b.h / 2)) + 60;
+            const r = svg.getBoundingClientRect();
+            const k = Math.min(r.width / (maxX - minX), r.height / (maxY - minY), 1.2);
+            view.k = k;
+            view.x = r.width / 2 - k * (minX + maxX) / 2;
+            view.y = r.height / 2 - k * (minY + maxY) / 2;
+            applyView();
+        }
 
-function renderPanels() {
-  renderGrammar();
-  renderFirsts();
-  renderTransitions();
-  renderTable();
-  renderConflicts();
-}
+        function renderPanels() {
+            renderGrammar();
+            renderFirsts();
+            renderTransitions();
+            renderTable();
+            renderConflicts();
+        }
 
-function renderGrammar() {
-  let h = '<h2>Gramática aumentada</h2>';
-  DATA.productions.forEach((p, i) => {
-    const rhs = p.right.length
-      ? p.right.map(s => `<span class="${isTerm(s) ? 't' : 'nt'}">${symName(s)}</span>`).join(' ')
-      : '<span class="t">\u03b5</span>';
-    h += `<div class="prod">(${i}) <span class="nt">${symName(p.left)}</span> \u2192 ${rhs}</div>`;
-  });
+        function renderGrammar() {
+            let h = '<h2>Gramática aumentada</h2>';
+            DATA.productions.forEach((p, i) => {
+                const rhs = p.right.length
+                    ? p.right.map(s => `<span class="${isTerm(s) ? 't' : 'nt'}">${symName(s)}</span>`).join(' ')
+                    : '<span class="t">\u03b5</span>';
+                h += `<div class="prod">(${i}) <span class="nt">${symName(p.left)}</span> \u2192 ${rhs}</div>`;
+            });
 
-  const term = DATA.symbols.filter(s => s.terminal);
-  const noTerm = DATA.symbols.filter(s => !s.terminal);
-  h += '<h2>Terminales</h2><div>' +
-       term.map(s => `<span class="chip t">${s.name}</span>`).join('') + '</div>';
-  h += '<h2>No terminales</h2><div>' +
-       noTerm.map(s => `<span class="chip nt">${s.name}</span>`).join('') + '</div>';
-  $('#gramBody').innerHTML = h;
-}
+            const term = DATA.symbols.filter(s => s.terminal);
+            const noTerm = DATA.symbols.filter(s => !s.terminal);
+            h += '<h2>Terminales</h2><div>' +
+                term.map(s => `<span class="chip t">${s.name}</span>`).join('') + '</div>';
+            h += '<h2>No terminales</h2><div>' +
+                noTerm.map(s => `<span class="chip nt">${s.name}</span>`).join('') + '</div>';
+            $('#gramBody').innerHTML = h;
+        }
 
-function renderFirsts() {
-  let f = '<h2>Conjuntos FIRST</h2><table><thead><tr><th>Símbolo</th><th>FIRST</th></tr></thead><tbody>';
-  DATA.firsts.forEach(fs => {
-    const sym = SYM[fs.symbol];
-    if (!sym || sym.terminal) return;
-    const set = fs.set.map(s => symName(s));
-    if (fs.epsilon) set.push('\u03b5');
-    f += `<tr><td class="mono nt">${sym.name}</td><td class="mono">` +
-         (set.length ? '{ ' + set.join(', ') + ' }' : '{ }') + '</td></tr>';
-  });
-  f += '</tbody></table>';
-  $('#firstBody').innerHTML = f;
-}
+        function renderFirsts() {
+            let f = '<h2>Conjuntos FIRST</h2><table><thead><tr><th>Símbolo</th><th>FIRST</th></tr></thead><tbody>';
+            DATA.firsts.forEach(fs => {
+                const sym = SYM[fs.symbol];
+                if (!sym || sym.terminal) return;
+                const set = fs.set.map(s => symName(s));
+                if (fs.epsilon) set.push('\u03b5');
+                f += `<tr><td class="mono nt">${sym.name}</td><td class="mono">` +
+                    (set.length ? '{ ' + set.join(', ') + ' }' : '{ }') + '</td></tr>';
+            });
+            f += '</tbody></table>';
+            $('#firstBody').innerHTML = f;
+        }
 
-function renderTransitions() {
-  let t = '<h2>Transiciones del autómata</h2><table><thead><tr><th>Desde</th><th>Símbolo</th><th>Hacia</th></tr></thead><tbody>';
-  [...DATA.transitions]
-    .sort((a, b) => a.from - b.from || a.symbol - b.symbol)
-    .forEach(tr => {
-      t += `<tr><td class="mono">I${tr.from}</td>` +
-           `<td class="mono ${isTerm(tr.symbol) ? 't' : 'nt'}">${symName(tr.symbol)}</td>` +
-           `<td class="mono">I${tr.to}</td></tr>`;
-    });
-  t += '</tbody></table>';
-  $('#transBody').innerHTML = t;
-}
+        function renderTransitions() {
+            let t = '<h2>Transiciones del autómata</h2><table><thead><tr><th>Desde</th><th>Símbolo</th><th>Hacia</th></tr></thead><tbody>';
+            [...DATA.transitions]
+                .sort((a, b) => a.from - b.from || a.symbol - b.symbol)
+                .forEach(tr => {
+                    t += `<tr><td class="mono">I${tr.from}</td>` +
+                        `<td class="mono ${isTerm(tr.symbol) ? 't' : 'nt'}">${symName(tr.symbol)}</td>` +
+                        `<td class="mono">I${tr.to}</td></tr>`;
+                });
+            t += '</tbody></table>';
+            $('#transBody').innerHTML = t;
+        }
 
-/* ---------- Tabla ACTION / GOTO ---------- */
-function renderTable() {
-  if (!DATA.action && !DATA.goto) {
-    $('#tableBody').innerHTML = '<h2>Tabla LR(1)</h2><p>El JSON no contiene los campos <code>action</code>/<code>goto</code>.</p>';
-    return;
-  }
+        /* ---------- Tabla ACTION / GOTO ---------- */
+        function renderTable() {
+            if (!DATA.action && !DATA.goto) {
+                $('#tableBody').innerHTML = '<h2>Tabla LR(1)</h2><p>El JSON no contiene los campos <code>action</code>/<code>goto</code>.</p>';
+                return;
+            }
 
-  const terminals = DATA.symbols.filter(s => s.terminal && s.name !== 'eof')
-                                 .sort((a,b) => a.id - b.id);
-  const eofSym    = DATA.symbols.find(s => s.name === 'eof');
-  const nonterms  = DATA.symbols.filter(s => !s.terminal && s.name !== "Goal'")
-                                 .sort((a,b) => a.id - b.id);
-  const actIdx = {};
-  (DATA.action || []).forEach(a => { actIdx[a.state + '|' + a.symbol] = a; });
-  const goIdx  = {};
-  (DATA.goto   || []).forEach(g => { goIdx[g.state + '|' + g.symbol] = g.to; });
+            const terminals = DATA.symbols.filter(s => s.terminal && s.name !== 'eof')
+                .sort((a, b) => a.id - b.id);
+            const eofSym = DATA.symbols.find(s => s.name === 'eof');
+            const nonterms = DATA.symbols.filter(s => !s.terminal && s.name !== "Goal'")
+                .sort((a, b) => a.id - b.id);
+            const actIdx = {};
+            (DATA.action || []).forEach(a => { actIdx[a.state + '|' + a.symbol] = a; });
+            const goIdx = {};
+            (DATA.goto || []).forEach(g => { goIdx[g.state + '|' + g.symbol] = g.to; });
 
-  const confSet = new Set();
-  (DATA.conflicts || []).forEach(c => confSet.add(c.state + '|' + c.terminal));
+            // Mapa de conflictos: state|symbol -> objeto conflicto (existing + incoming)
+            const confMap = new Map();
+            (DATA.conflicts || []).forEach(c => confMap.set(c.state + '|' + c.terminal, c));
 
-  // Cabecera
-  let html = '<h2>Tabla ACTION / GOTO</h2><div class="lr-wrap"><table class="lr">';
-  html += '<thead><tr>';
-  html += '<th class="grp" rowspan="2">Estado</th>';
-  html += `<th class="grp" colspan="${terminals.length + (eofSym ? 1 : 0)}">ACTION</th>`;
-  html += `<th class="grp" colspan="${nonterms.length}">GOTO</th>`;
-  html += '</tr><tr>';
-  for (const s of terminals) html += `<th>${s.name}</th>`;
-  if (eofSym) html += `<th>${eofSym.name}</th>`;
-  for (const s of nonterms) html += `<th class="nt">${s.name}</th>`;
-  html += '</tr></thead><tbody>';
+            // Cabecera
+            let html = '<h2>Tabla ACTION / GOTO</h2><div class="lr-wrap"><table class="lr">';
+            html += '<thead><tr>';
+            html += '<th class="grp" rowspan="2">Estado</th>';
+            html += `<th class="grp" colspan="${terminals.length + (eofSym ? 1 : 0)}">ACTION</th>`;
+            html += `<th class="grp" colspan="${nonterms.length}">GOTO</th>`;
+            html += '</tr><tr>';
+            for (const s of terminals) html += `<th>${s.name}</th>`;
+            if (eofSym) html += `<th>${eofSym.name}</th>`;
+            for (const s of nonterms) html += `<th class="nt">${s.name}</th>`;
+            html += '</tr></thead><tbody>';
 
-  // Filas
-  for (const st of DATA.states) {
-    html += `<tr><td class="state">${st.id}</td>`;
+            // Filas
+            for (const st of DATA.states) {
+                html += `<tr><td class="state">${st.id}</td>`;
 
-    // ACTION de terminales
-    for (const t of terminals) {
-      const cell = actIdx[st.id + '|' + t.id];
-      html += renderActionCell(cell, st.id, t.id, confSet);
-    }
-    // ACTION de eof
-    if (eofSym) {
-      const cell = actIdx[st.id + '|' + eofSym.id];
-      html += renderActionCell(cell, st.id, eofSym.id, confSet);
-    }
-    // GOTO
-    for (const n of nonterms) {
-      const to = goIdx[st.id + '|' + n.id];
-      if (to === undefined)
-        html += '<td class="empty">·</td>';
-      else
-        html += `<td class="mono">${to}</td>`;
-    }
-    html += '</tr>';
-  }
-  html += '</tbody></table></div>';
+                // ACTION de terminales
+                for (const t of terminals) {
+                    const cell = actIdx[st.id + '|' + t.id];
+                    html += renderActionCell(cell, st.id, t.id, confMap);
+                }
+                // ACTION de eof
+                if (eofSym) {
+                    const cell = actIdx[st.id + '|' + eofSym.id];
+                    html += renderActionCell(cell, st.id, eofSym.id, confMap);
+                }
+                // GOTO
+                for (const n of nonterms) {
+                    const to = goIdx[st.id + '|' + n.id];
+                    if (to === undefined)
+                        html += '<td class="empty">·</td>';
+                    else
+                        html += `<td class="mono">${to}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table></div>';
 
-  // Leyenda
-  html += '<h2>Leyenda</h2>' +
-          '<div><span class="chip t">sn</span> shift al estado n &nbsp; ' +
-          '<span class="chip nt">rn</span> reduce con producción n &nbsp; ' +
-          '<span class="chip" style="color:var(--ok)">acc</span> accept &nbsp; ' +
-          '<span class="chip" style="background:rgba(248,113,113,.22);color:#fecaca">rojo</span> conflicto</div>';
+            // Leyenda
+            html += '<h2>Leyenda</h2>' +
+                '<div><span class="chip t">sn</span> shift al estado n &nbsp; ' +
+                '<span class="chip nt">rn</span> reduce con producción n &nbsp; ' +
+                '<span class="chip" style="color:var(--ok)">acc</span> accept &nbsp; ' +
+                '<span class="chip" style="background:rgba(248,113,113,.22);color:#fecaca">rojo</span> conflicto &nbsp; ' +
+                '<span class="chip" style="background:rgba(248,113,113,.22);color:#fecaca">a/b</span> acciones en conflicto</div>';
 
-  $('#tableBody').innerHTML = html;
-}
+            $('#tableBody').innerHTML = html;
+        }
 
-function renderActionCell(cell, state, symbol, confSet) {
-  const isConf = confSet.has(state + '|' + symbol);
-  const cls = isConf ? 'conflict' : '';
-  if (!cell) return `<td class="empty ${cls}">·</td>`;
-  let txt = '', extra = '';
-  if (cell.type === 'shift')  { txt = 's' + cell.value; extra = 'shift'; }
-  if (cell.type === 'reduce') { txt = 'r' + cell.value; extra = 'reduce'; }
-  if (cell.type === 'accept') { txt = 'acc'; extra = 'acc'; }
-  if (isConf) return `<td class="${cls}">${txt}</td>`;
-  return `<td class="${extra}">${txt}</td>`;
-}
+        function fmtAction(a) {
+            if (!a) return '';
+            if (a.type === 'shift') return 's' + a.value;
+            if (a.type === 'reduce') return 'r' + a.value;
+            if (a.type === 'accept') return 'acc';
+            return '';
+        }
 
-/* ---------- Conflictos ---------- */
-function renderConflicts() {
-  const conf = DATA.conflicts || [];
-  if (conf.length === 0) {
-    $('#confBody').innerHTML =
-      '<h2>Conflictos</h2><p class="ok-msg">✓ Sin conflictos. La gramática es LR(1).</p>';
-    return;
-  }
+        function renderActionCell(cell, state, symbol, confMap) {
+            const c = confMap.get(state + '|' + symbol);
 
-  let h = `<h2>Conflictos (${conf.length})</h2>`;
-  for (const c of conf) {
-    const termName = symName(c.terminal);
-    h += `<div class="conf">`;
-    h += `<h3>${c.kind} en estado ${c.state}, símbolo «${termName}»</h3>`;
-    h += `<div class="kv">existente: <b>${c.existing.type} ${c.existing.value}</b></div>`;
-    h += `<div class="kv">nueva:     <b>${c.incoming.type} ${c.incoming.value}</b></div>`;
-    h += `<div class="items"><div class="kv">Ítems que lo causan:</div>`;
-    for (const it of c.causes) {
-      const p = DATA.productions[it.production];
-      let rhs = '';
-      for (let i = 0; i <= p.right.length; i++) {
-        if (i === it.dot) rhs += '\u2022 ';
-        if (i < p.right.length) rhs += symName(p.right[i]) + ' ';
-      }
-      h += `<div class="prod">  [${symName(p.left)} \u2192 ${rhs}, ${symName(it.lookahead)}]</div>`;
-    }
-    h += `</div></div>`;
-  }
-  $('#confBody').innerHTML = h;
-}
+            if (c) {
+                const left = fmtAction(c.existing);
+                const right = fmtAction(c.incoming);
+                return `<td class="conflict" title="Conflicto ${c.kind}">${left}/${right}</td>`;
+            }
 
-/* ---------- UI ---------- */
-document.querySelectorAll('.tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.panel).classList.add('active');
-  });
-});
+            if (!cell) return '<td class="empty">·</td>';
+            const txt = fmtAction(cell);
+            return `<td class="${cell.type}">${txt}</td>`;
+        }
 
-$('#fit').addEventListener('click', fit);
-$('#zin').addEventListener('click', () => { view.k = Math.min(3, view.k * 1.2); applyView(); });
-$('#zout').addEventListener('click', () => { view.k = Math.max(0.12, view.k / 1.2); applyView(); });
+        /* ---------- Conflictos ---------- */
+        function renderConflicts() {
+            const conf = DATA.conflicts || [];
+            if (conf.length === 0) {
+                $('#confBody').innerHTML =
+                    '<h2>Conflictos</h2><p class="ok-msg">✓ Sin conflictos. La gramática es LR(1).</p>';
+                return;
+            }
 
-$('#file').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try { load(JSON.parse(await file.text())); }
-  catch (err) { alert('JSON inválido: ' + err.message); }
-});
+            let h = `<h2>Conflictos (${conf.length})</h2>`;
+            for (const c of conf) {
+                const termName = symName(c.terminal);
+                h += `<div class="conf">`;
+                h += `<h3>${c.kind} en estado ${c.state}, símbolo «${termName}»</h3>`;
+                h += `<div class="kv">existente: <b>${c.existing.type} ${c.existing.value}</b> ` +
+                    `(${fmtAction(c.existing)})</div>`;
+                h += `<div class="kv">nueva:     <b>${c.incoming.type} ${c.incoming.value}</b> ` +
+                    `(${fmtAction(c.incoming)})</div>`;
+                h += `<div class="items"><div class="kv">Ítems que lo causan:</div>`;
+                for (const it of c.causes) {
+                    const p = DATA.productions[it.production];
+                    let rhs = '';
+                    for (let i = 0; i <= p.right.length; i++) {
+                        if (i === it.dot) rhs += '\u2022 ';
+                        if (i < p.right.length) rhs += symName(p.right[i]) + ' ';
+                    }
+                    h += `<div class="prod">  [${symName(p.left)} \u2192 ${rhs}, ${symName(it.lookahead)}]</div>`;
+                }
+                h += `</div></div>`;
+            }
+            $('#confBody').innerHTML = h;
+        }
 
-(async function boot() {
-  if (window.LR1_DATA) {
-    load(window.LR1_DATA);
-    return;
-  }
-  try {
-    const res = await fetch('lr1.json', {cache: 'no-store'});
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    load(await res.json());
-  } catch (e) {
-  }
-})();
+        /* ---------- UI ---------- */
+        document.querySelectorAll('.tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.panel).classList.add('active');
+            });
+        });
+
+        $('#fit').addEventListener('click', fit);
+        $('#zin').addEventListener('click', () => { view.k = Math.min(3, view.k * 1.2); applyView(); });
+        $('#zout').addEventListener('click', () => { view.k = Math.max(0.12, view.k / 1.2); applyView(); });
+
+        (async function boot() {
+            if (window.LR1_DATA) {
+                load(window.LR1_DATA);
+                return;
+            }
+            try {
+                const res = await fetch('lr1.json', { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                load(await res.json());
+            } catch (e) {
+            }
+        })();
     </script>
 </body>
 </html>
