@@ -48,6 +48,14 @@ struct Action{
 	}
 };
 
+struct Conflict {
+	int state;
+	int terminal;
+	string kind;
+	Action existing, incoming;
+	vector<Item> causes;
+};
+
 class LR1 {
 	Grammar gr;
 	map<pair<int, int>, int> transitions;
@@ -56,6 +64,7 @@ class LR1 {
 	// Action[Estado i,symbol] = Shift 7, Reduce 2, accept
 	map<pair<int, Symbol>, Action> action; 
 	map<pair<int, int>, int> gotoT;
+	vector<Conflict> conflicts;
 
 	void first() {
 		for (auto& sy : gr.symbolTable) {
@@ -192,7 +201,144 @@ class LR1 {
 		}
 	}
 
+	static string typeName(TypeAction t) {
+		return t == Shift ? "shift" : t == Reduce ? "reduce" : "accept";
+	}
+	static string escape(const string& s) {
+		string o;
+		for (char c : s) {
+			if (c == '"')       o += "\\\"";
+			else if (c == '\\') o += "\\\\";
+			else if (c == '\n') o += "\\n";
+			else                o += c;
+		}
+		return o;
+	}
 
+	void writeJSON(ostream& f) const {
+		f << "{";
+
+		// symbols
+		f << "\"symbols\":[";
+		for (size_t i = 0; i < gr.symbolTable.size(); i++) {
+			if (i) f << ",";
+			f << "{\"id\":" << i
+				<< ",\"name\":\"" << escape(gr.symbolTable[i].name) << "\""
+				<< ",\"terminal\":" << (gr.symbolTable[i].terminal ? "true" : "false") << "}";
+		}
+		f << "],";
+
+		// productions
+		f << "\"productions\":[";
+		for (size_t i = 0; i < gr.productions.size(); i++) {
+			if (i) f << ",";
+			f << "{\"left\":" << gr.productions[i].left << ",\"right\":[";
+			for (size_t j = 0; j < gr.productions[i].right.size(); j++) {
+				if (j) f << ",";
+				f << gr.productions[i].right[j];
+			}
+			f << "]}";
+		}
+		f << "],";
+
+		// states
+		f << "\"states\":[";
+		for (size_t i = 0; i < states.size(); i++) {
+			if (i) f << ",";
+			f << "{\"id\":" << i << ",\"items\":[";
+			size_t k = 0;
+			for (const auto& it : states[i]) {
+				if (k++) f << ",";
+				f << "{\"production\":" << it.production
+					<< ",\"dot\":" << it.dot
+					<< ",\"lookahead\":" << it.lookahead << "}";
+			}
+			f << "]}";
+		}
+		f << "],";
+
+		// transitions
+		f << "\"transitions\":[";
+		{
+			size_t n = 0;
+			for (auto& t : transitions) {
+				if (n++) f << ",";
+				f << "{\"from\":" << t.first.first
+					<< ",\"symbol\":" << t.first.second
+					<< ",\"to\":" << t.second << "}";
+			}
+		}
+		f << "],";
+
+		// firsts
+		f << "\"firsts\":[";
+		{
+			size_t n = 0;
+			for (auto& kv : firsts) {
+				if (n++) f << ",";
+				f << "{\"symbol\":" << kv.first << ",\"set\":[";
+				size_t m = 0;
+				for (Symbol s : kv.second.symbols) {
+					if (m++) f << ",";
+					f << s;
+				}
+				f << "],\"epsilon\":" << (kv.second.epsilon ? "true" : "false") << "}";
+			}
+		}
+		f << "],";
+
+		// action
+		f << "\"action\":[";
+		{
+			size_t n = 0;
+			for (auto& kv : action) {
+				if (n++) f << ",";
+				f << "{\"state\":" << kv.first.first
+					<< ",\"symbol\":" << kv.first.second
+					<< ",\"type\":\"" << typeName(kv.second.type) << "\""
+					<< ",\"value\":" << kv.second.v << "}";
+			}
+		}
+		f << "],";
+
+		// goto
+		f << "\"goto\":[";
+		{
+			size_t n = 0;
+			for (auto& kv : gotoT) {
+				if (n++) f << ",";
+				f << "{\"state\":" << kv.first.first
+					<< ",\"symbol\":" << kv.first.second
+					<< ",\"to\":" << kv.second << "}";
+			}
+		}
+		f << "],";
+
+		// conflicts
+		f << "\"conflicts\":[";
+		for (size_t i = 0; i < conflicts.size(); i++) {
+			if (i) f << ",";
+			const auto& c = conflicts[i];
+			f << "{\"state\":" << c.state
+				<< ",\"terminal\":" << c.terminal
+				<< ",\"kind\":\"" << c.kind << "\""
+				<< ",\"existing\":{\"type\":\"" << typeName(c.existing.type)
+				<< "\",\"value\":" << c.existing.v << "}"
+				<< ",\"incoming\":{\"type\":\"" << typeName(c.incoming.type)
+				<< "\",\"value\":" << c.incoming.v << "}"
+				<< ",\"causes\":[";
+			for (size_t j = 0; j < c.causes.size(); j++) {
+				if (j) f << ",";
+				f << "{\"production\":" << c.causes[j].production
+					<< ",\"dot\":" << c.causes[j].dot
+					<< ",\"lookahead\":" << c.causes[j].lookahead << "}";
+			}
+			f << "]}";
+		}
+		f << "]";
+
+		f << "}";
+	}
 
 public:
 	LR1(Grammar g) : gr(g) {
@@ -213,22 +359,32 @@ public:
 
 	bool setAction(int i, Symbol s, TypeAction t, int j = 0) {
 		Action newAction = { t,j };
-		if (action.find({ i,s }) == action.end()) {
-			action[{i, s}] = newAction;
+		auto key = make_pair(i, s);
+		if (action.find(key) == action.end()) {
+			action[key] = newAction;
 			return 1;
 		}
 		
-		if (action[{i, s}] == newAction) return 1;
+		if (action[key] == newAction) return 1;
 
-		bool shift = action[{i,s}].type == Shift|| newAction.type == Shift;
-		cout << "CONFLICTO " << (shift ? "shift/reduce" : "reduce/reduce") << " en estado " << i << ", simbolo " << gr.symbolTable[s].name << endl;
-
+		bool shift = action[key].type == Shift|| newAction.type == Shift;
+		
+		vector<Item> causes;
 		for (const Item& it : states[i]) {
 			const Production& p = gr.productions[it.production];
 			bool red = it.dot >= (int)p.right.size() && it.lookahead == s;
 			bool sh = it.dot < (int)p.right.size() && p.right[it.dot] == s;
-			if (red || sh) printItem(it);
+			if (red || sh) causes.push_back(it);
 		}
+
+		conflicts.push_back({i, s, shift ? "shift/reduce" : "reduce/reduce", action[key], newAction, causes});
+
+		cout << "CONFLICTO " << (shift ? "shift/reduce" : "reduce/reduce")
+			<< " en estado " << i
+			<< ", simbolo " << gr.symbolTable[s].name << endl;
+
+		for (const Item& it : causes) printItem(it);
+
 		return 0;
 	}
 
@@ -361,6 +517,18 @@ public:
 		}
 	}
 
+	void exportJSON(const string& filename) const {
+		ofstream f(filename);
+		if (!f) { cerr << "No se pudo crear " << filename << "\n"; return; }
+		writeJSON(f);
+	}
+	void exportJS(const string& filename) const {
+		ofstream f(filename);
+		if (!f) { cerr << "No se pudo crear " << filename << "\n"; return; }
+		f << "window.LR1_DATA = ";
+		writeJSON(f);
+		f << ";\n";
+	}
 };
 
 
@@ -371,7 +539,11 @@ int main() {
 	lr.printGrammar();
 	lr.printFirsts();
 	lr.printStates();
-	if(!lr.fillTable()) return 1;
+
+	bool ok = lr.fillTable();
 	lr.printTables();
-	return 0;
+
+	lr.exportJSON("../visualization/lr1.json");
+	lr.exportJS("../visualization/data.js");
+	return ok ? 0 : 1;
 }
