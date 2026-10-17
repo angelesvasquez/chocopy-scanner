@@ -61,8 +61,7 @@ static string describe_char(char ch) {
     return o.str();
 }
 
-Scanner::Scanner(const string& filename, bool verbose_) : 
-    pos(0), row(1), col(1), at_line_start(true), line_has_tokens(false), paren_depth(0), started(false), finished(false), completed_logged(false), verbose(verbose_), error_count(0) {
+Scanner::Scanner(const string& filename, bool verbose_) : pos(0), row(1), col(1), at_line_start(true), line_has_tokens(false), paren_depth(0), started(false), finished(false), completed_logged(false), verbose(verbose_), error_count(0) {
     indent_stack.push(0);
 
     ifstream file(filename.c_str(), ios::binary);
