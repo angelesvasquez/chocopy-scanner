@@ -1,17 +1,16 @@
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <numeric>
-#include <map>
-#include <algorithm>
-#include <cctype>
+#include <string>
 #include "scanner.h"
 
 using namespace std;
 
-int main()
+int main(int argc, char** argv)
 {
-    Scanner scanner;
+    string filename = argc > 1 ? argv[1] : "input.txt";
+    Scanner scanner(filename);
 
-    return 0;
+    while (scanner.gettoken().token != "EOF") {
+    }
+
+    return scanner.errors() > 0 ? 1 : 0;
 }

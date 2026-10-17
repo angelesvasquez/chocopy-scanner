@@ -4,30 +4,53 @@
 #include <iostream>
 #include <string>
 #include <stack>
+#include <queue>
+#include <cstddef>
 
 using namespace std;
 
 struct TokenData {
-    int row, col;
     string token;
     string value;
+    int row, col;
     TokenData(string _token, string _value, int _row, int _col) : token(_token), value(_value), row(_row), col(_col) {}
 };
 
 class Scanner {
     string buffer;
-    char* p_buffer;
+    size_t pos;
     int row;
     int col;
 
     stack<int> indent_stack;
-    int indent_counter;
+    queue<TokenData> pending;
+
+    bool at_line_start;
+    bool line_has_tokens;
+    int paren_depth;
+    bool started;
+    bool finished;
+    bool completed_logged;
+    bool verbose;
+    int error_count;
+
+    bool at_end() const;
+    void push_token(const string& token, const string& value, int r, int c);
+    void error(int r, int c, const string& msg, const string& hint = "");
+    void skip_comment();
+    void handle_indentation();
+    void scan_word();
+    void scan_number();
+    void scan_string();
+    void scan_operator();
+    void finish();
+    void scan_step();
 public:
-    Scanner();
+    Scanner(const string& filename = "input.txt", bool verbose = true);
     char get_char();
     char peek_char();
-    void check_token(string& token_buffer);
-    void scan();
+    TokenData gettoken();
+    int errors() const { return error_count; }
 };
 
 #endif
