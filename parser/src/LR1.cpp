@@ -1,5 +1,3 @@
-// Generador LR1
-
 #include "LR1.h"
 
 #include <iostream>
@@ -892,12 +890,12 @@ bool LR1::panicRecover(int &pos, int &lastRecoveryPos)
 	{
 		if (tokenAt(pos).symbol == "eof")
 		{
-			record(pos, "aborta");
+			record(pos, "PANICO: aborta (eof)");
 			return false;
 		}
 		string d = tokenAt(pos).symbol;
 		pos++;
-		record(pos, "descarta " + d);
+		record(pos, "PANICO: descarta " + d);
 	}
 
 	Symbol A = -1;
@@ -911,32 +909,33 @@ bool LR1::panicRecover(int &pos, int &lastRecoveryPos)
 		}
 		if (stateStack.size() == 1)
 		{
-			record(pos, "aborto");
+			record(pos, "PANICO: aborta (pila vacia)");
 			return false;
 		}
 		stateStack.pop_back();
 		symStack.pop_back();
 		popped++;
 	}
-	record(pos, "1: desapila " + to_string(popped) + ", el tope tiene Goto para " + gr.symbolTable[A].name);
+	const string &nameA = gr.symbolTable[A].name;
+	record(pos, "PANICO: pop " + to_string(popped) + " - selected " + nameA);
 
 	string skipped;
 	while (!inFollow(A, tokenAt(pos)))
 	{
 		if (tokenAt(pos).symbol == "eof")
 		{
-			record(pos, "2: llega a $ sin FOLLOW(" + gr.symbolTable[A].name + "), aborta");
+			record(pos, "PANICO: aborta (eof sin FOLLOW(" + nameA + "))");
 			return false;
 		}
 		skipped += (skipped.empty() ? "" : " ") + tokenAt(pos).symbol;
 		pos++;
 	}
-	record(pos, "2: " + (skipped.empty() ? string("no consume nada") : "consume " + skipped) + " hasta FOLLOW(" + gr.symbolTable[A].name + ")");
+	record(pos, "PANICO: skip " + (skipped.empty() ? string("nada") : skipped));
 
 	int g = gotoT[{stateStack.back(), A}];
 	symStack.push_back(A);
 	stateStack.push_back(g);
-	record(pos, "3 y 4: apila " + gr.symbolTable[A].name + " y Goto = " + to_string(g));
+	record(pos, "PANICO: push " + nameA + " - s" + to_string(g));
 
 	lastRecoveryPos = pos;
 	return true;
@@ -967,7 +966,7 @@ bool LR1::parse(Scanner *scanner)
 		{
 			string lex = la.symbol == "eof" ? "fin de archivo" : "'" + (la.value.empty() ? la.symbol : la.value) + "'";
 			syntaxErrors.push_back("fila " + to_string(la.row) + ", col " + to_string(la.col) + ": token inesperado " + lex);
-			record(pos, "error: Action[" + to_string(s) + ", " + la.symbol + "] vacia");
+			record(pos, "ERROR Action[" + to_string(s) + "," + la.symbol + "] vacia -> ENTRA PANICO");
 
 			if (!panicRecover(pos, lastRecoveryPos))
 			{

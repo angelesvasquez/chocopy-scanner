@@ -13,7 +13,7 @@ class Frontend {
     Scanner scanner;
     LR1 parser;
 
-    static Grammar loadGrammar(string parser_file);
+    Grammar loadGrammar(string parser_file);
 
 public:
     Frontend(string parser_file, string scanner_file, bool verboseScanner = false);

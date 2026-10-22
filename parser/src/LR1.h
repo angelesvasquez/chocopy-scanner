@@ -20,14 +20,14 @@ struct Item
 	int dot;
 	Symbol lookahead;
 
-	bool operator==(const Item& i) const
+	bool operator==(const Item &i) const
 	{
 		return (production == i.production &&
-		    dot == i.dot &&
-		    lookahead == i.lookahead);
+				dot == i.dot &&
+				lookahead == i.lookahead);
 	}
 
-	bool operator<(const Item& i) const
+	bool operator<(const Item &i) const
 	{
 		if (production != i.production)
 		{
@@ -62,7 +62,7 @@ struct Action
 	TypeAction type;
 	int v;
 
-	bool operator==(const Action& a) const
+	bool operator==(const Action &a) const
 	{
 		return type == a.type && v == a.v;
 	}
@@ -103,11 +103,11 @@ class LR1
 	vector<Symbol> panicSet;
 	vector<string> syntaxErrors;
 
-	bool inFollow(Symbol A, const TokenData& t);
-	Symbol chooseAnchor(int state, const TokenData& t);
-	bool panicRecover(int& pos, int& lastRecoveryPos);
+	bool inFollow(Symbol A, const TokenData &t);
+	Symbol chooseAnchor(int state, const TokenData &t);
+	bool panicRecover(int &pos, int &lastRecoveryPos);
 
-	Scanner* scn = nullptr;
+	Scanner *scn = nullptr;
 	vector<TokenData> tokBuf;
 	bool scnEof = false;
 	static const int inputWindow = 8;
@@ -115,20 +115,20 @@ class LR1
 	string stackStatesStr();
 	string stackSymbolsStr();
 	string productionStr(int p);
-	void record(int pos, const string& action);
-	const TokenData& tokenAt(size_t i);
+	void record(int pos, const string &action);
+	const TokenData &tokenAt(size_t i);
 	string inputStr(int pos);
 
 	void first();
 	void follow();
-	FirstSet firstCadena(vector<Symbol>& beta);
-	void closure(State& S);
-	State gotoState(State& S, Symbol x);
+	FirstSet firstCadena(vector<Symbol> &beta);
+	void closure(State &S);
+	State gotoState(State &S, Symbol x);
 	void canonicalCollection();
 
 	static string typeName(TypeAction t);
-	static string escape(const string& s);
-	void writeJSON(ostream& f) const;
+	static string escape(const string &s);
+	void writeJSON(ostream &f) const;
 
 public:
 	LR1(Grammar g);
@@ -138,20 +138,20 @@ public:
 
 	bool build(bool verbose = true);
 
-	void printItem(const Item& item);
+	void printItem(const Item &item);
 	void printFirsts();
 	void printFollows();
 	void printGrammar();
 
-	void printState(int stateId, const State& S);
+	void printState(int stateId, const State &S);
 	void printStates();
 	void printTables();
 
-	void exportJSON(const string& filename) const;
-	void exportJS(const string& filename) const;
+	void exportJSON(const string &filename) const;
+	void exportJS(const string &filename) const;
 
-	void setPanicSet(const vector<string>& names);
-	bool parse(Scanner* scanner);
+	void setPanicSet(const vector<string> &names);
+	bool parse(Scanner *scanner);
 	int syntaxErrorCount() const { return (int)syntaxErrors.size(); }
 	void printSyntaxErrors();
 	void printTrace();

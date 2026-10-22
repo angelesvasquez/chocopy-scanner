@@ -10,10 +10,10 @@ Frontend::Frontend(string parser_file, string scanner_file, bool verboseScanner)
 
 bool Frontend::run() {
     if (!parser.build(false)) {
-        cout << "La gramatica tiene conflictos; no se puede analizar." << endl;
         return false;
     }
 
+    parser.setPanicSet({"stmt", "func_decl", "class_item", "decl_item"});
     bool ok = parser.parse(&scanner);
     parser.printTrace();
 

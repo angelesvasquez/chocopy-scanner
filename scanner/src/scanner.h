@@ -32,13 +32,12 @@ class Scanner {
     int paren_depth;
     bool started;
     bool finished;
-    bool completed_logged;
     bool verbose;
     int error_count;
 
     bool at_end() const;
     void push_token(const string& token, const string& value, int r, int c);
-    void error(int r, int c, const string& msg, const string& hint = "");
+    void error(int r, int c, const string& msg);
     void skip_comment();
     void handle_indentation();
     void scan_word();
