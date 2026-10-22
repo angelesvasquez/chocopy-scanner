@@ -12,8 +12,10 @@ using namespace std;
 struct TokenData {
     string token;
     string value;
+    string symbol;
     int row, col;
-    TokenData(string _token, string _value, int _row, int _col) : token(_token), value(_value), row(_row), col(_col) {}
+    TokenData(string _token, string _value, int _row, int _col);
+    string grammarSymbol() const;
 };
 
 class Scanner {

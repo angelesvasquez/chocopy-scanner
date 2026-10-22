@@ -96,6 +96,23 @@ char Scanner::peek_char() {
     return at_end() ? '\0' : buffer[pos];
 }
 
+TokenData::TokenData(string _token, string _value, int _row, int _col) : token(_token), value(_value), row(_row), col(_col) {
+    symbol = grammarSymbol();
+}
+
+string TokenData::grammarSymbol() const {
+    if (token == "EOF") {
+        return "eof";
+    }
+    if (token == "NUMBER") {
+        return "INTEGER";
+    }
+    if (token == "ID" || token == "STRING" || token == "NEWLINE" || token == "INDENT" || token == "DEDENT") {
+        return token;
+    }
+    return value;
+}
+
 void Scanner::push_token(const string& token, const string& value, int r, int c) {
     pending.push(TokenData(token, value, r, c));
     if (token != "INDENT" && token != "DEDENT" && token != "NEWLINE" && token != "EOF") {
@@ -159,8 +176,7 @@ void Scanner::handle_indentation() {
     at_line_start = false;
 
     if (has_tab) {
-        error(tab_row, tab_col, "tabulacion dentro de la indentacion",
-              "ChocoPy no admite tabulaciones al inicio de linea; usa solo espacios");
+        error(tab_row, tab_col, "tabulacion no valida");
     }
 
     int top = indent_stack.top();
@@ -169,24 +185,12 @@ void Scanner::handle_indentation() {
         push_token("INDENT", "", row, col);
     }
     else if (n < top) {
-        stack<int> copy = indent_stack;
-        vector<int> levels;
-        while (!copy.empty()) {
-            levels.push_back(copy.top());
-            copy.pop();
-        }
         while (indent_stack.top() > n) {
             indent_stack.pop();
             push_token("DEDENT", "", row, col);
         }
         if (indent_stack.top() != n) {
-            ostringstream o;
-            for (size_t i = levels.size(); i-- > 0;) {
-                o << levels[i];
-                if (i > 0) o << ", ";
-            }
-            error(row, col, "indentacion inconsistente: " + to_string(n) + " espacios no coincide con ningun nivel abierto",
-                  "Alinea la linea con un bloque anterior (niveles abiertos: " + o.str() + ")");
+            error(row, col, "indentacion inconsistente");
         }
     }
 }
@@ -218,17 +222,17 @@ void Scanner::scan_number() {
         while (isalnum(static_cast<unsigned char>(peek_char())) || peek_char() == '_') {
             s += get_char();
         }
-        error(r, c, "literal numerico mal formado '" + s + "'", "Identificador empieza con digito");
+        error(r, c, "literal numerico mal formado '" + s + "'");
         return;
     }
 
     if (s.size() > 1 && s[0] == '0') {
-        error(r, c, "entero con ceros a la izquierda '" + s + "'", "Multiples ceros");
+        error(r, c, "ceros a la izquierda '" + s + "'");
         return;
     }
 
     if (s.size() > 10 || stoll(s) > MAX_INT32) {
-        error(r, c, "literal entero '" + s + "' fuera del rango de 32 bits con signo", "El valor maximo de un literal es 2147483647");
+        error(r, c, "entero fuera de rango '" + s + "'");
         return;
     }
 
@@ -259,7 +263,7 @@ void Scanner::scan_string() {
                 s += get_char();
             }
             else {
-                error(er, ec, "secuencia de escape invalida: '\\' seguido de " + describe_char(e), "Los escapes validos son \\n, \\t, \\\" y \\\\");
+                error(er, ec, "escape invalido " + describe_char(e));
                 bad_escape = true;
                 s += get_char();
             }
@@ -269,14 +273,13 @@ void Scanner::scan_string() {
     }
 
     if (!closed) {
-        error(r, c, string("cadena sin cerrar al llegar a fin de ") + (at_end() ? "archivo" : "linea"), "Agrega la comilla de cierre \" al final de la cadena");
+        error(r, c, "cadena sin cerrar");
         return;
     }
     if (bad_escape) return;
 
     if (s.size() - 2 > MAX_STRING_LEN) {
-        error(r, c, "cadena de " + to_string(s.size() - 2) + " caracteres excede el maximo permitido (" +
-              to_string(MAX_STRING_LEN) + ")", "Acorta la cadena o dividela en varias");
+        error(r, c, "cadena demasiado larga");
         return;
     }
 
@@ -325,7 +328,7 @@ void Scanner::scan_operator() {
             push_token("DOUBLESLASH", "//", r, c);
         }
         else {
-            error(r, c, "operador '/' no valido", "ChocoPy solo tiene division entera '//'");
+            error(r, c, "Tipo operador incorrecto");
         }
         break;
     case '!':
@@ -334,7 +337,7 @@ void Scanner::scan_operator() {
             push_token("NOTEQUAL", "!=", r, c);
         }
         else {
-            error(r, c, "operador '!' mal formado", "'!' debe ir seguido de '=' (para negar usa 'not')");
+            error(r, c, "Tipo operador incorrecto");
         }
         break;
     case '<':
@@ -367,10 +370,10 @@ void Scanner::scan_operator() {
     default:
         if (static_cast<unsigned char>(ch) >= 0x80) {
             while ((static_cast<unsigned char>(peek_char()) & 0xC0) == 0x80) get_char();
-            error(r, c, "caracter no ASCII no valido fuera de una cadena", "Elimina el caracter o colocalo dentro de una cadena");
+            error(r, c, "caracter no valido");
         }
         else {
-            error(r, c, "caracter no valido " + describe_char(ch), "Elimina el caracter; no pertenece a ningun token de ChocoPy");
+            error(r, c, "caracter no valido " + describe_char(ch));
         }
         break;
     }
@@ -378,7 +381,7 @@ void Scanner::scan_operator() {
 
 void Scanner::finish() {
     if (paren_depth > 0) {
-        error(row, col, "fin de archivo con parentesis o corchete sin cerrar", "Agrega el delimitador de cierre que falta");
+        error(row, col, "delimitador sin cerrar");
     }
     if (line_has_tokens) {
         push_token("NEWLINE", "", row, col);
