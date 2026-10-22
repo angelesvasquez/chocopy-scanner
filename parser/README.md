@@ -10,7 +10,10 @@ visualizador web.
 
     parser/
     ├── src/
+    │   ├── main.cpp
+    │   ├── Grammar.h
     │   ├── Grammar.cpp
+    │   ├── LR1.h
     │   ├── LR1.cpp
     │   └── input.txt
     ├── tests/
@@ -28,7 +31,7 @@ visualizador web.
 
 Desde `src/`:
 
-    g++ LR1.cpp -o lr1
+    g++ Grammar.cpp LR1.cpp main.cpp -o lr1
 
 ## Ejecución
 
