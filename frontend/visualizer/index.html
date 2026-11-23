@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compilador ChocoPy</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #192837;
+      --muted: #4b6074;
+      --branch: #cbd7e3;
+      --accent: #105e71;
+      --mono: ui-monospace, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: #f1f5f8; color: var(--ink); font: 1rem/1.5 system-ui, sans-serif; }
+    main { max-width: 78rem; margin: 0 auto; padding: clamp(1rem, 5vw, 3.5rem); }
+    header { margin-bottom: 1.5rem; border-left: .25rem solid var(--accent); padding-left: 1rem; }
+    h1 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.75rem); line-height: 1.2; }
+    h2, h3, p { margin-top: 0; }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: 1rem;
+    }
+    .tabs button { padding: .45rem .8rem; font-weight: 650; color: var(--accent); }
+    .tabs button[aria-selected="true"] { color: white; background: var(--accent); border-color: var(--accent); }
+    .tabs button[aria-selected="false"]:hover { background: #eaf4f6; }
+    .result { display: inline-block; margin: .75rem 0 0; padding: .15rem .65rem; border-radius: 1rem; font-weight: 650; background: #e6eef5; }
+    .accepted { color: #14583f; background: #dcf3e9; }
+    .rejected { color: #8b2a25; background: #fbe9e7; }
+    #status { margin: .75rem 0 0; color: #9a2d26; }
+    #status:empty { display: none; }
+    .source {
+      margin: .4rem 0 0;
+      color: var(--muted);
+      font-family: var(--mono);
+      overflow-wrap: anywhere;
+    }
+    .panel {
+      max-height: min(70vh, 54rem);
+      padding: clamp(.75rem, 3vw, 1.5rem);
+      margin-bottom: 1rem;
+      background: white;
+      border: 1px solid var(--branch);
+      border-radius: .75rem;
+      overflow: auto;
+    }
+    .panel > :last-child { margin-bottom: 0; }
+    .source-view {
+      display: grid;
+      grid-template-columns: max-content minmax(max-content, 1fr);
+      max-height: 55vh;
+      overflow: auto;
+      border: 1px solid var(--branch);
+      border-radius: .4rem;
+      background: #f8fafc;
+    }
+    .source-view pre { margin: 0; padding: .75rem 1rem; font: .9rem/1.6 var(--mono); tab-size: 4; }
+    .line-numbers {
+      position: sticky;
+      left: 0;
+      background: #edf3f7;
+      border-right: 1px solid var(--branch);
+      color: var(--muted);
+      text-align: right;
+      user-select: none;
+    }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .75rem; margin: 0 0 1rem; }
+    .stats > div { padding: .65rem 1rem; border-radius: .4rem; background: #f1f5f8; }
+    .stats dt { color: var(--muted); }
+    .stats dd { margin: 0; font-size: 1.35rem; font-weight: 700; }
+    .table-scroll { max-height: 24rem; overflow: auto; border: 1px solid var(--branch); border-radius: .35rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th { position: sticky; top: 0; background: #edf3f7; text-align: left; }
+    th, td { padding: .4rem .6rem; border-bottom: 1px solid #e4ebf1; vertical-align: top; }
+    td { overflow-wrap: anywhere; white-space: pre-wrap; }
+    .technical td { font-family: var(--mono); }
+    .pagination { display: flex; gap: .6rem; align-items: center; margin: .6rem 0; }
+    button, select { padding: .25rem .5rem; border: 1px solid var(--branch); border-radius: .3rem; background: white; color: var(--ink); font: inherit; }
+    button:not(:disabled) { cursor: pointer; }
+    button:disabled { opacity: .55; }
+    .group, .scope { margin-top: .75rem; }
+    .group > summary, .scope > summary { font-weight: 650; }
+    .group > :not(summary), .scope > :not(summary) { margin: .6rem 0; }
+    .scope { border: 1px solid var(--branch); border-radius: .35rem; padding: .25rem .55rem; }
+    .state-picker { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+    .state-content h3 { margin: .85rem 0 .35rem; }
+    .tree ul { list-style: none; margin: .125rem 0 .375rem .55rem; padding: 0 0 0 .875rem; border-left: 1px solid var(--branch); }
+    .tree li { margin: .125rem 0; }
+    summary, .leaf { padding: .25rem .5rem; border-radius: .25rem; overflow-wrap: anywhere; }
+    summary { cursor: pointer; }
+    summary::marker { color: var(--accent); }
+    summary:hover { background: #eaf4f6; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .leaf { margin-left: 1rem; }
+    .kind { font-weight: 650; }
+    .value { color: var(--accent); white-space: pre-wrap; }
+    .meta { color: var(--muted); font-size: .875rem; }
+    .value, .meta { margin-left: .6rem; font-family: var(--mono); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Compilador ChocoPy</h1>
+    <p class="source" id="source" hidden></p>
+    <span class="result" id="result" hidden></span>
+    <p id="status" role="status"></p>
+  </header>
+  <div class="tabs" id="navigation" role="tablist" aria-label="Secciones del informe" hidden>
+    <button type="button" id="tab-input" role="tab" aria-controls="input" aria-selected="false" tabindex="-1">Entrada</button>
+    <button type="button" id="tab-summary" role="tab" aria-controls="summary" aria-selected="false" tabindex="-1">Diagnósticos</button>
+    <button type="button" id="tab-lexer" role="tab" aria-controls="lexer" aria-selected="false" tabindex="-1">Léxico</button>
+    <button type="button" id="tab-parser" role="tab" aria-controls="parser" aria-selected="false" tabindex="-1">Sintaxis LR(1)</button>
+    <button type="button" id="tab-semantics" role="tab" aria-controls="semantics" aria-selected="false" tabindex="-1">Ámbitos</button>
+    <button type="button" id="tab-tree" role="tab" aria-controls="syntax-tree" aria-selected="false" tabindex="-1">AST</button>
+  </div>
+  <section class="panel" id="input" role="tabpanel" aria-labelledby="tab-input" tabindex="0" hidden><h2>Código fuente</h2><div id="source-code"></div></section>
+  <section class="panel" id="summary" role="tabpanel" aria-labelledby="tab-summary" tabindex="0" hidden><h2>Diagnósticos</h2><div id="diagnostics"></div></section>
+  <section class="panel" id="lexer" role="tabpanel" aria-labelledby="tab-lexer" tabindex="0" hidden><h2>Análisis léxico</h2><div id="tokens"></div></section>
+  <section class="panel" id="parser" role="tabpanel" aria-labelledby="tab-parser" tabindex="0" hidden><h2>Análisis sintáctico LR(1)</h2><div id="syntax"></div></section>
+  <section class="panel" id="semantics" role="tabpanel" aria-labelledby="tab-semantics" tabindex="0" hidden><h2>Tabla de símbolos y ámbitos</h2><div id="scopes"></div></section>
+  <section class="panel" id="syntax-tree" role="tabpanel" aria-labelledby="tab-tree" tabindex="0" hidden><h2 id="ast-heading">AST tipado</h2><div class="tree" id="tree"></div></section>
+</main>
+<script>
+  const byId = id => document.getElementById(id);
+
+  function element(tag, className, text) {
+    const result = document.createElement(tag);
+    result.className = className;
+    result.textContent = text;
+    return result;
+  }
+
+  function renderNode(node) {
+    if (!node || typeof node.kind !== 'string' || !Array.isArray(node.children)) {
+      throw new Error('Nodo AST inválido');
+    }
+
+    const branch = node.children.length > 0;
+    const label = branch ? document.createElement('summary') : element('div', 'leaf', '');
+    label.append(element('span', 'kind', node.kind));
+    if (typeof node.text === 'string' && node.text) {
+      label.append(element('code', 'value', node.text));
+    }
+    if (Number.isInteger(node.line) && Number.isInteger(node.col) && node.line > 0) {
+      const location = element('span', 'meta', `${node.line}:${node.col}`);
+      location.title = 'Línea y columna';
+      label.append(location);
+    }
+    if (typeof node.type === 'string') {
+      label.append(element('span', 'meta', `Tipo: ${node.type}`));
+    }
+    if (!branch) return label;
+
+    const details = document.createElement('details');
+    details.open = true;
+    const children = document.createElement('ul');
+    for (const child of node.children) {
+      const item = document.createElement('li');
+      item.append(renderNode(child));
+      children.append(item);
+    }
+    details.append(label, children);
+    return details;
+  }
+
+  function show(id) {
+    const node = byId(id);
+    node.hidden = false;
+    return node;
+  }
+
+  function initializeTabs(initialId) {
+    const tabs = [...show('navigation').children];
+    function activate(active) {
+      for (const tab of tabs) {
+        const selected = tab === active;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        byId(tab.getAttribute('aria-controls')).hidden = !selected;
+      }
+    }
+    for (const [index, tab] of tabs.entries()) {
+      tab.addEventListener('click', () => activate(tab));
+      tab.addEventListener('keydown', event => {
+        const destinations = {ArrowLeft: (index + tabs.length - 1) % tabs.length,
+          ArrowRight: (index + 1) % tabs.length, Home: 0, End: tabs.length - 1};
+        if (!Object.hasOwn(destinations, event.key)) return;
+        event.preventDefault();
+        const next = tabs[destinations[event.key]];
+        activate(next);
+        next.focus();
+      });
+    }
+    activate(byId(initialId));
+  }
+
+  function renderSource(source) {
+    const container = byId('source-code');
+    if (typeof source !== 'string' || !source.length) {
+      const message = source === '' ? 'El archivo fuente está vacío.' :
+        source === null ? 'El compilador no pudo leer el archivo fuente.' :
+        'Vuelve a generar el informe para ver el código fuente.';
+      container.append(element('p', '', message));
+      return;
+    }
+    const text = source.replace(/\r\n?/g, '\n');
+    const lines = text.split('\n').map((_, index) => index + 1).join('\n');
+    const numbers = element('pre', 'line-numbers', lines);
+    numbers.setAttribute('aria-hidden', 'true');
+    const code = document.createElement('pre');
+    code.append(element('code', '', text));
+    const viewport = element('div', 'source-view', '');
+    viewport.tabIndex = 0;
+    viewport.setAttribute('role', 'region');
+    viewport.setAttribute('aria-label', 'Código fuente con números de línea');
+    viewport.append(numbers, code);
+    container.append(viewport);
+  }
+
+  function position(item) {
+    return item.line ? `${item.line}:${item.col}` : '—';
+  }
+
+  function table(headers, rows, {technical = false} = {}) {
+    const wrapper = element('div', 'table-scroll', '');
+    wrapper.tabIndex = 0;
+    wrapper.setAttribute('role', 'region');
+    wrapper.setAttribute('aria-label', headers.join(', '));
+    const view = element('table', technical ? 'technical' : '', '');
+    const heading = document.createElement('tr');
+    for (const label of headers) {
+      const column = element('th', '', label);
+      column.scope = 'col';
+      heading.append(column);
+    }
+    const head = document.createElement('thead');
+    head.append(heading);
+    const body = document.createElement('tbody');
+    view.append(head, body);
+    wrapper.append(view);
+    const fragment = document.createDocumentFragment();
+    fragment.append(wrapper);
+
+    const pageSize = 100;
+    const previous = element('button', '', 'Anterior');
+    const next = element('button', '', 'Siguiente');
+    const count = element('span', '', '');
+    count.setAttribute('aria-live', 'polite');
+    function renderPage(page) {
+      const start = page * pageSize;
+      const end = Math.min(start + pageSize, rows.length);
+      const pageRows = document.createDocumentFragment();
+      for (const cells of rows.slice(start, end)) {
+        const row = document.createElement('tr');
+        for (const cell of cells) row.append(element('td', '', String(cell ?? '—')));
+        pageRows.append(row);
+      }
+      body.replaceChildren(pageRows);
+      if (rows.length > pageSize) {
+        count.textContent = `${start + 1}–${end} de ${rows.length}`;
+        previous.disabled = page === 0;
+        next.disabled = end === rows.length;
+        previous.onclick = () => renderPage(page - 1);
+        next.onclick = () => renderPage(page + 1);
+        wrapper.scrollTop = 0;
+      }
+    }
+    if (rows.length > pageSize) {
+      const controls = element('div', 'pagination', '');
+      controls.append(previous, count, next);
+      fragment.append(controls);
+    }
+    renderPage(0);
+    return fragment;
+  }
+
+  function detail(label, open = false, className = 'group') {
+    const section = element('details', className, '');
+    section.open = open;
+    section.append(element('summary', '', label));
+    return section;
+  }
+
+  function renderDiagnostics(diagnostics) {
+    const container = byId('diagnostics');
+    const stats = element('dl', 'stats', '');
+    const phases = [['Errores léxicos', diagnostics.lexical], ['Errores sintácticos', diagnostics.syntax],
+      ['Errores semánticos', diagnostics.semantic]];
+    container.append(stats);
+    for (const [title, entries] of phases) {
+      const stat = document.createElement('div');
+      stat.append(element('dt', '', title), element('dd', '', String(entries.length)));
+      stats.append(stat);
+      if (entries.length) {
+        container.append(element('h3', '', title), table(['Línea:columna', 'Causa'],
+          entries.map(item => [position(item), item.message])));
+      }
+    }
+  }
+
+  function renderAutomaton(data) {
+    const panel = detail(`Autómata y tablas LR(1) · ${data.states.length} estados`);
+    const names = data.symbols.map(symbol => symbol.name);
+    const productionText = ({left, right}) => `${names[left]} → ${right.map(id => names[id]).join(' ') || 'ε'}`;
+    const stateContent = element('div', 'state-content', '');
+    const selector = document.createElement('select');
+    selector.id = 'lr-state';
+    for (const state of data.states) {
+      const option = element('option', '', String(state.id));
+      option.value = String(state.id);
+      selector.append(option);
+    }
+    const field = element('div', 'state-picker', '');
+    const label = element('label', '', 'Estado LR(1)');
+    label.htmlFor = selector.id;
+    field.append(label, selector);
+    selector.value = String(data.states[0].id);
+    const displayState = id => {
+      const state = data.states.find(entry => entry.id === id);
+      const rules = new Map();
+      for (const {production, dot, lookahead} of state.items) {
+        const key = `${production}:${dot}`;
+        if (!rules.has(key)) {
+          const {left, right} = data.productions[production];
+          const sequence = right.map(symbol => names[symbol]);
+          sequence.splice(dot, 0, '•');
+          rules.set(key, [`${names[left]} → ${sequence.join(' ')}`, []]);
+        }
+        rules.get(key)[1].push(names[lookahead]);
+      }
+      const transitions = data.transitions.filter(entry => entry.from === id);
+      const actions = data.action.filter(entry => entry.state === id);
+      const gotos = data.goto.filter(entry => entry.state === id);
+      const conflicts = data.conflicts.filter(entry => entry.state === id);
+      stateContent.replaceChildren(element('h3', '', 'Ítems'), table(['Producción', 'Anticipación'],
+        [...rules.values()].map(([rule, next]) => [rule, next.join(', ')]), {technical: true}));
+      for (const [title, headers, rows] of [
+        ['Transiciones', ['Símbolo', 'Destino'], transitions.map(entry => [names[entry.symbol], entry.to])],
+        ['ACTION', ['Terminal', 'Acción', 'Valor'], actions.map(entry => [names[entry.symbol], entry.type, entry.type === 'accept' ? '—' : entry.value])],
+        ['GOTO', ['No terminal', 'Destino'], gotos.map(entry => [names[entry.symbol], entry.to])],
+        ['Conflictos', ['Terminal', 'Tipo'], conflicts.map(entry => [names[entry.terminal], entry.kind])]
+      ]) {
+        if (rows.length) stateContent.append(element('h3', '', title), table(headers, rows, {technical: true}));
+      }
+    };
+    selector.addEventListener('change', () => displayState(Number(selector.value)));
+    const grammar = detail('Producciones y conjuntos FIRST');
+    grammar.append(table(['Regla', 'Producción'], data.productions.map((rule, i) => [i, productionText(rule)]), {technical: true}),
+      table(['Símbolo', 'FIRST'], [...data.firsts].sort((a, b) => a.symbol - b.symbol).map(entry => {
+        const values = entry.set.map(id => names[id]);
+        if (entry.epsilon) values.push('ε');
+        return [names[entry.symbol], values.join(', ')];
+      }), {technical: true}));
+    panel.append(field, stateContent, grammar);
+    panel.addEventListener('toggle', () => {
+      if (panel.open && !stateContent.hasChildNodes()) displayState(Number(selector.value));
+    });
+    return panel;
+  }
+
+  function renderSyntax(report) {
+    const panel = byId('syntax');
+    if (!report.automaton) {
+      panel.append(element('p', '', 'El análisis sintáctico no se ejecutó.'));
+      return;
+    }
+    const trace = detail(`Traza de análisis · ${report.trace.length} pasos`, true);
+    trace.append(table(['Paso', 'Estados', 'Símbolos', 'Entrada', 'Acción'], report.trace.map((row, i) =>
+      [i + 1, row.states, row.symbols, row.input, row.action]), {technical: true}));
+    panel.append(trace, renderAutomaton(report.automaton));
+  }
+
+  function renderScopes(scopes) {
+    const container = byId('scopes');
+    if (!scopes.length) {
+      container.append(element('p', '', 'No hay ámbitos disponibles sin un AST completo.'));
+      return;
+    }
+    const words = {funcion: 'función', parametro: 'parámetro'};
+    const labels = scopes.map(scope => scope.name ? `${scope.name} (#${scope.id})` : 'Módulo');
+    for (const scope of scopes) {
+      const label = scope.name ? `${words[scope.kind] ?? scope.kind} ${labels[scope.id]} · ${position(scope)}` : 'Módulo';
+      const section = detail(label, true, 'scope');
+      if (scope.parent !== null) section.append(element('p', '', `Ámbito léxico padre: ${labels[scope.parent]}`));
+      if (scope.entries.length) {
+        section.append(table(['Nombre', 'Clase de símbolo', 'Tipo', 'Declaración', 'Ámbito de destino'],
+          scope.entries.map(entry => [entry.name, words[entry.kind] ?? entry.kind, entry.type, position(entry), labels[entry.target]]),
+          {technical: true}));
+      } else {
+        section.append(element('p', '', 'Sin símbolos locales.'));
+      }
+      container.append(section);
+    }
+  }
+
+  function renderReport(report) {
+    if (typeof report?.source !== 'string') throw new Error('Informe inválido');
+    show('source').textContent = report.source;
+    if (typeof report.accepted !== 'boolean') {
+      show('syntax-tree');
+      byId('tree').append(renderNode(report.ast));
+      return;
+    }
+
+    const result = show('result');
+    result.textContent = report.accepted ? 'Aceptado' : 'Rechazado';
+    result.classList.add(report.accepted ? 'accepted' : 'rejected');
+    renderSource(report.sourceText);
+    renderDiagnostics(report.diagnostics);
+    byId('tokens').append(report.tokens.length ? table(['Terminal', 'Lexema', 'Línea:columna'],
+      report.tokens.map(token => [token.symbol, token.text || '—', position(token)]), {technical: true}) :
+      element('p', '', 'No hay tokens disponibles.'));
+    renderSyntax(report);
+    renderScopes(report.scopes);
+    if (report.ast) {
+      if (!report.accepted) byId('ast-heading').textContent = 'AST con errores semánticos';
+      byId('tree').append(renderNode(report.ast));
+    } else {
+      byId('tree').append(element('p', '', 'No se obtuvo un AST completo.'));
+    }
+    initializeTabs(report.accepted ? 'tab-input' : 'tab-summary');
+  }
+
+  async function loadReport(read) {
+    try {
+      renderReport(await read());
+    } catch {
+      byId('status').textContent = 'No se pudo cargar el análisis. Genera report.json en esta carpeta y recarga la página.';
+    }
+  }
+
+  function readLocalFile(filename, globalName) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = filename;
+      script.onload = () => globalThis[globalName] ? resolve(globalThis[globalName]) : reject();
+      script.onerror = reject;
+      document.head.append(script);
+    });
+  }
+
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    loadReport(async () => {
+      let response = await fetch('report.json', {cache: 'no-store'});
+      if (response.status === 404) response = await fetch('ast.json', {cache: 'no-store'});
+      if (!response.ok) throw new Error('No se pudo descargar el informe');
+      return response.json();
+    });
+  } else if (location.protocol === 'file:') {
+    loadReport(() => readLocalFile('report-data.js', 'chocopyReport')
+      .catch(() => readLocalFile('ast-data.js', 'chocopyAst')));
+  }
+</script>
+</body>
+</html>

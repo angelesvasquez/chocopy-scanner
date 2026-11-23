@@ -1,1 +1,6 @@
 *.exe
+/build/
+/frontend/visualizer/ast.json
+/frontend/visualizer/ast-data.js
+/frontend/visualizer/report.json
+/frontend/visualizer/report-data.js
