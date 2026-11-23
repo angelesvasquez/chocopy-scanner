@@ -48,8 +48,14 @@ bool Grammar::loadFile(string filename)
 		std::cerr << "No se pudo abrir el archivo: " << filename << "\n";
 		return 0;
 	}
+	load(file);
+	return true;
+}
+
+void Grammar::load(std::istream &input)
+{
 	string line;
-	while (getline(file, line))
+	while (getline(input, line))
 	{
 		if (line.empty())
 		{
@@ -79,8 +85,6 @@ bool Grammar::loadFile(string filename)
 		}
 		productions.push_back(prod);
 	}
-	file.close();
-	return 1;
 }
 
 void Grammar::print()

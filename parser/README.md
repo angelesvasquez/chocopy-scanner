@@ -31,7 +31,7 @@ visualizador web.
 
 Desde `src/`:
 
-    g++ Grammar.cpp LR1.cpp main.cpp -o lr1
+    g++ -std=c++17 Grammar.cpp LR1.cpp main.cpp ../../scanner/src/scanner.cpp -o lr1
 
 ## Ejecución
 

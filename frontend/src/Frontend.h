@@ -1,7 +1,7 @@
 #ifndef FRONTEND_H
 #define FRONTEND_H
 
-#include <string>
+#include <filesystem>
 
 #include "../../scanner/src/scanner.h"
 #include "../../parser/src/Grammar.h"
@@ -10,15 +10,16 @@
 using namespace std;
 
 class Frontend {
+    std::filesystem::path sourceFile;
     Scanner scanner;
     LR1 parser;
 
-    Grammar loadGrammar(string parser_file);
+    static Grammar loadGrammar();
 
 public:
-    Frontend(string parser_file, string scanner_file, bool verboseScanner = false);
+    explicit Frontend(const std::filesystem::path& sourceFile);
 
-    bool run();
+    bool run(bool trace, const std::filesystem::path& astFile, const std::filesystem::path& reportFile);
 };
 
 #endif

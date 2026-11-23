@@ -1,5 +1,6 @@
 #include "scanner.h"
 
+#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <map>
@@ -63,20 +64,30 @@ static string describe_char(char ch)
     return o.str();
 }
 
-Scanner::Scanner(const string &filename, bool verbose_) : pos(0), row(1), col(1), at_line_start(true), line_has_tokens(false), paren_depth(0), started(false), finished(false), verbose(verbose_), error_count(0)
+Scanner::Scanner(const std::filesystem::path &filename, bool verbose_) : pos(0), row(1), col(1), at_line_start(true), line_has_tokens(false), paren_depth(0), started(false), finished(false), verbose(verbose_)
 {
     indent_stack.push(0);
 
-    ifstream file(filename.c_str(), ios::binary);
+    ifstream file;
+    std::error_code fileError;
+    if (std::filesystem::is_regular_file(filename, fileError)) file.open(filename, ios::binary);
     if (!file.is_open())
     {
-        cout << "ERROR SCAN - No se pudo abrir el archivo '" << filename << "'" << endl;
-        error_count++;
+        const auto utf8 = filename.u8string();
+        error(0, 0, "No se pudo abrir el archivo '" + string(utf8.begin(), utf8.end()) + "'.");
         return;
     }
-    stringstream buffer_stream;
-    buffer_stream << file.rdbuf();
-    buffer = buffer_stream.str();
+    char block[4096];
+    while (file)
+    {
+        file.read(block, sizeof(block));
+        buffer.append(block, static_cast<std::size_t>(file.gcount()));
+    }
+    if (file.bad() || !file.eof())
+    {
+        buffer.clear();
+        error(0, 0, "No se pudo leer el archivo fuente completo.");
+    }
 }
 
 char Scanner::get_char()
@@ -112,6 +123,18 @@ string TokenData::grammarSymbol() const
     {
         return "eof";
     }
+    if (token == "STRING" && value.size() > 2 && value.front() == '"' && value.back() == '"')
+    {
+        const auto identifierStart = [](char ch) {
+            return ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+        };
+        if (identifierStart(value[1]) && all_of(value.begin() + 2, value.end() - 1, [&](char ch) {
+                return identifierStart(ch) || (ch >= '0' && ch <= '9');
+            }))
+        {
+            return "IDSTRING";
+        }
+    }
     if (token == "ID" || token == "STRING" || token == "NEWLINE" || token == "INDENT" || token == "DEDENT" || token == "INTEGER")
     {
         return token;
@@ -130,14 +153,18 @@ void Scanner::push_token(const string &token, const string &value, int r, int c)
 
 void Scanner::error(int r, int c, const string &msg)
 {
-    error_count++;
-    cout << "ERROR SCAN - (" << r << ":" << c << ") " << msg;
-    cout << endl;
+    diagnostics_.push_back({{r, c}, msg});
+    if (verbose)
+    {
+        cout << "ERROR SCAN - ";
+        if (r > 0) cout << '(' << r << ':' << c << ") ";
+        cout << msg << endl;
+    }
 }
 
 void Scanner::skip_comment()
 {
-    while (!pos >= buffer.size() && peek_char() != '\n')
+    while (pos < buffer.size() && peek_char() != '\n')
         get_char();
 }
 
@@ -147,7 +174,7 @@ void Scanner::handle_indentation()
     bool has_tab = false;
     int tab_row = 0, tab_col = 0;
 
-    while (!pos >= buffer.size())
+    while (pos < buffer.size())
     {
         char c = peek_char();
         if (c == ' ')
@@ -283,7 +310,7 @@ void Scanner::scan_string()
     bool closed = false;
     bool bad_escape = false;
 
-    while (!pos >= buffer.size() && peek_char() != '\n')
+    while (pos < buffer.size() && peek_char() != '\n')
     {
         char ch = peek_char();
         if (ch == '"')
@@ -562,7 +589,7 @@ TokenData Scanner::gettoken()
     }
     if (verbose && t.token == "EOF")
     {
-        cout << "INFO  SCAN - Completed with " << error_count << " errors" << endl;
+        cout << "INFO  SCAN - Completed with " << errors() << " errors" << endl;
     }
     return t;
 }

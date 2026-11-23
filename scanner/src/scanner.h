@@ -1,11 +1,14 @@
 #ifndef SCANNER_H
 #define SCANNER_H
 
+#include "../../common/Diagnostic.h"
 #include <iostream>
 #include <string>
 #include <stack>
 #include <queue>
 #include <cstddef>
+#include <filesystem>
+#include <vector>
 
 using namespace std;
 
@@ -33,7 +36,7 @@ class Scanner {
     bool started;
     bool finished;
     bool verbose;
-    int error_count;
+    std::vector<chocopy::Diagnostic> diagnostics_;
 
     bool at_end() const;
     void push_token(const string& token, const string& value, int r, int c);
@@ -47,11 +50,13 @@ class Scanner {
     void finish();
     void scan_step();
 public:
-    Scanner(const string& filename = "input.txt", bool verbose = true);
+    Scanner(const std::filesystem::path& filename = "input.txt", bool verbose = true);
     char get_char();
     char peek_char();
     TokenData gettoken();
-    int errors() const { return error_count; }
+    std::size_t errors() const { return diagnostics_.size(); }
+    const std::string& sourceText() const { return buffer; }
+    const std::vector<chocopy::Diagnostic>& diagnostics() const { return diagnostics_; }
 };
 
 #endif

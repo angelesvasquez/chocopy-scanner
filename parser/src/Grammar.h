@@ -1,6 +1,7 @@
 #ifndef GRAMMAR_H
 #define GRAMMAR_H
 
+#include <iosfwd>
 #include <string>
 #include <map>
 #include <vector>
@@ -34,6 +35,7 @@ public:
 	Symbol getSymbol(string name, bool isTerminalD = true);
 	Symbol findSymbol(string name);
 	void augment();
+	void load(std::istream &input);
 	bool loadFile(string filename);
 	void print();
 };

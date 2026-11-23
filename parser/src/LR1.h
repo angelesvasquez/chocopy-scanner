@@ -2,6 +2,7 @@
 #define LR1_H
 
 #include "Grammar.h"
+#include "Ast.h"
 #include "../../scanner/src/scanner.h"
 #include <iostream>
 #include <vector>
@@ -11,6 +12,7 @@
 #include <map>
 #include <unordered_map>
 #include <string>
+#include <variant>
 
 using namespace std;
 
@@ -99,9 +101,11 @@ class LR1
 	vector<int> stateStack;
 	vector<Symbol> symStack;
 	vector<TraceRow> trace;
+	bool traceEnabled = true;
 
 	vector<Symbol> panicSet;
-	vector<string> syntaxErrors;
+	vector<chocopy::Diagnostic> syntaxErrors;
+	void reportUnexpected(int state, const TokenData &token);
 
 	bool inFollow(Symbol A, const TokenData &t);
 	Symbol chooseAnchor(int state, const TokenData &t);
@@ -109,7 +113,7 @@ class LR1
 
 	Scanner *scn = nullptr;
 	vector<TokenData> tokBuf;
-	bool scnEof = false;
+	bool scnEof = true;
 	static const int inputWindow = 8;
 
 	string stackStatesStr();
@@ -128,9 +132,11 @@ class LR1
 
 	static string typeName(TypeAction t);
 	static string escape(const string &s);
-	void writeJSON(ostream &f) const;
 
 public:
+	using AstValue = std::variant<TokenData, ast::NodePtr>;
+	using AstReduction = ast::NodePtr (*)(const Grammar &, const Production &, vector<AstValue>);
+
 	LR1(Grammar g);
 
 	bool setAction(int i, Symbol s, TypeAction t, int j = 0);
@@ -149,11 +155,14 @@ public:
 
 	void exportJSON(const string &filename) const;
 	void exportJS(const string &filename) const;
+	void writeJSON(ostream &f) const;
 
 	void setPanicSet(const vector<string> &names);
-	bool parse(Scanner *scanner);
-	int syntaxErrorCount() const { return (int)syntaxErrors.size(); }
-	void printSyntaxErrors();
+	ast::NodePtr parse(Scanner *scanner, AstReduction buildNode, bool enableTrace = true);
+	void finishScanning();
+	const vector<TokenData> &tokens() const { return tokBuf; }
+	const vector<TraceRow> &traceRows() const { return trace; }
+	const vector<chocopy::Diagnostic> &syntaxDiagnostics() const { return syntaxErrors; }
 	void printTrace();
 };
 

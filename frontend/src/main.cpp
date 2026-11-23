@@ -1,12 +1,40 @@
-#include <iostream>
 #include "Frontend.h"
+#include <exception>
+#include <iostream>
 
-using namespace std;
-
+#ifdef _WIN32
+int wmain(int argc, wchar_t** argv) {
+#else
 int main(int argc, char** argv) {
-    string parser_file = argc > 1 ? argv[1] : "../../parser/src/input.txt";
-    string scanner_file = argc > 2 ? argv[2] : "../../scanner/src/input.txt";
+#endif
+    const char* usage = "Uso: python choco.py archivo_entrada.py [--trace] [--report-json RUTA | --ast-json RUTA]\n";
+    if (argc < 2) {
+        std::cerr << usage;
+        return 2;
+    }
 
-    Frontend frontEnd(parser_file, scanner_file);
-    return frontEnd.run() ? 0 : 1;
+    try {
+        const std::filesystem::path sourceFile(argv[1]);
+        bool trace = false;
+        std::filesystem::path astFile;
+        std::filesystem::path reportFile;
+        for (int i = 2; i < argc; ++i) {
+            const std::filesystem::path option(argv[i]);
+            if (option == "--trace" && !trace) {
+                trace = true;
+            } else if (astFile.empty() && reportFile.empty() && i + 1 < argc &&
+                       (option == "--ast-json" || option == "--report-json")) {
+                auto& destination = option == "--ast-json" ? astFile : reportFile;
+                destination = argv[++i];
+            } else {
+                std::cerr << usage;
+                return 2;
+            }
+        }
+        Frontend frontEnd(sourceFile);
+        return frontEnd.run(trace, astFile, reportFile) ? 0 : 1;
+    } catch (const std::exception& error) {
+        std::cerr << "Error del compilador: " << error.what() << '\n';
+        return 2;
+    }
 }

@@ -8,6 +8,8 @@
 #include <map>
 #include <fstream>
 #include <unordered_map>
+#include <iterator>
+#include <utility>
 
 using namespace std;
 
@@ -841,7 +843,10 @@ string LR1::inputStr(int pos)
 
 void LR1::record(int pos, const string &action)
 {
-	trace.push_back({stackStatesStr(), stackSymbolsStr(), inputStr(pos), action});
+	if (traceEnabled)
+	{
+		trace.push_back({stackStatesStr(), stackSymbolsStr(), inputStr(pos), action});
+	}
 }
 
 void LR1::setPanicSet(const vector<string> &names)
@@ -932,7 +937,7 @@ bool LR1::panicRecover(int &pos, int &lastRecoveryPos)
 	}
 	record(pos, "PANICO: skip " + (skipped.empty() ? string("nada") : skipped));
 
-	int g = gotoT[{stateStack.back(), A}];
+	int g = gotoT.at({stateStack.back(), A});
 	symStack.push_back(A);
 	stateStack.push_back(g);
 	record(pos, "PANICO: push " + nameA + " - s" + to_string(g));
@@ -941,11 +946,33 @@ bool LR1::panicRecover(int &pos, int &lastRecoveryPos)
 	return true;
 }
 
-bool LR1::parse(Scanner *scanner)
+void LR1::reportUnexpected(int state, const TokenData &token)
+{
+	const string found = token.symbol == "eof" ? "fin de archivo" :
+		"'" + (token.value.empty() ? token.symbol : token.value) + "'";
+	string expected;
+	for (auto it = action.lower_bound({state, 0}); it != action.end() && it->first.first == state; ++it)
+	{
+		if (!expected.empty()) expected += ", ";
+		const string &name = gr.symbolTable[it->first.second].name;
+		expected += name == "eof" ? "fin de archivo" : "'" + name + "'";
+	}
+	string message = "Token inesperado " + found + ".";
+	if (!expected.empty()) message += " Se esperaba: " + expected + ".";
+	syntaxErrors.push_back({{token.row, token.col}, std::move(message)});
+}
+
+void LR1::finishScanning()
+{
+	while (!scnEof) tokenAt(tokBuf.size());
+}
+
+ast::NodePtr LR1::parse(Scanner *scanner, AstReduction buildNode, bool enableTrace)
 {
 	stateStack.assign(1, 0);
 	symStack.clear();
 	trace.clear();
+	traceEnabled = enableTrace;
 	syntaxErrors.clear();
 
 	scn = scanner;
@@ -954,6 +981,8 @@ bool LR1::parse(Scanner *scanner)
 
 	int pos = 0;
 	int lastRecoveryPos = -1;
+	int lastErrorPos = -1;
+	vector<AstValue> valStack;
 
 	while (true)
 	{
@@ -964,13 +993,17 @@ bool LR1::parse(Scanner *scanner)
 		auto it = a < 0 ? action.end() : action.find({s, a});
 		if (it == action.end())
 		{
-			string lex = la.symbol == "eof" ? "fin de archivo" : "'" + (la.value.empty() ? la.symbol : la.value) + "'";
-			syntaxErrors.push_back("fila " + to_string(la.row) + ", col " + to_string(la.col) + ": token inesperado " + lex);
+			if (pos != lastErrorPos)
+			{
+				reportUnexpected(s, la);
+				lastErrorPos = pos;
+			}
+			valStack.clear();
 			record(pos, "ERROR Action[" + to_string(s) + "," + la.symbol + "] vacia -> ENTRA PANICO");
 
 			if (!panicRecover(pos, lastRecoveryPos))
 			{
-				return false;
+				return nullptr;
 			}
 			continue;
 		}
@@ -981,38 +1014,40 @@ bool LR1::parse(Scanner *scanner)
 			record(pos, "s" + to_string(act.v));
 			symStack.push_back(a);
 			stateStack.push_back(act.v);
+			if (syntaxErrors.empty())
+			{
+				valStack.emplace_back(std::move(la));
+			}
 			pos++;
 		}
 		else if (act.type == Reduce)
 		{
 			Production &pr = gr.productions[act.v];
 			record(pos, "r" + to_string(act.v));
+			if (syntaxErrors.empty())
+			{
+				const auto first = valStack.end() - pr.right.size();
+				vector<AstValue> values(std::make_move_iterator(first), std::make_move_iterator(valStack.end()));
+				valStack.erase(first, valStack.end());
+				valStack.emplace_back(buildNode(gr, pr, std::move(values)));
+			}
 			for (size_t i = 0; i < pr.right.size(); i++)
 			{
 				symStack.pop_back();
 				stateStack.pop_back();
 			}
 			symStack.push_back(pr.left);
-			stateStack.push_back(gotoT[{stateStack.back(), pr.left}]);
+			stateStack.push_back(gotoT.at({stateStack.back(), pr.left}));
 		}
 		else
 		{
 			record(pos, "acepta");
-			return syntaxErrors.empty();
+			if (!syntaxErrors.empty() || scanner->errors() > 0)
+			{
+				return nullptr;
+			}
+			return std::get<ast::NodePtr>(std::move(valStack.back()));
 		}
-	}
-}
-
-void LR1::printSyntaxErrors()
-{
-	if (syntaxErrors.empty())
-	{
-		return;
-	}
-	cout << "\n--- ERRORES SINTACTICOS ---\n";
-	for (size_t i = 0; i < syntaxErrors.size(); i++)
-	{
-		cout << (i + 1) << ". " << syntaxErrors[i] << "\n";
 	}
 }
 
