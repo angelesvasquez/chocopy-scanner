@@ -54,7 +54,6 @@ struct BinaryRule {
 constexpr BinaryRule binaryRules[] = {
     {"+", Operand::Int, Operand::Int, "int"},
     {"+", Operand::Str, Operand::Str, "str"},
-    // The result element type is the join of both input element types.
     {"+", Operand::List, Operand::List, ""},
     {"-", Operand::Int, Operand::Int, "int"},
     {"*", Operand::Int, Operand::Int, "int"},

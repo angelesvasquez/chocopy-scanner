@@ -671,10 +671,7 @@ string LR1::inputStr(int pos) {
 }
 
 void LR1::record(int pos, const string &action) {
-  if (traceEnabled) {
-    trace.push_back(
-        {stackStatesStr(), stackSymbolsStr(), inputStr(pos), action});
-  }
+  trace.push_back({stackStatesStr(), stackSymbolsStr(), inputStr(pos), action});
 }
 
 void LR1::setPanicSet(const vector<string> &names) {
@@ -781,12 +778,10 @@ void LR1::finishScanning() {
     tokenAt(tokBuf.size());
 }
 
-ast::NodePtr LR1::parse(Scanner *scanner, AstReduction buildNode,
-                        bool enableTrace) {
+ast::NodePtr LR1::parse(Scanner *scanner, AstReduction buildNode) {
   stateStack.assign(1, 0);
   symStack.clear();
   trace.clear();
-  traceEnabled = enableTrace;
   syntaxErrors.clear();
 
   scn = scanner;
@@ -851,35 +846,5 @@ ast::NodePtr LR1::parse(Scanner *scanner, AstReduction buildNode,
       }
       return std::get<ast::NodePtr>(std::move(valStack.back()));
     }
-  }
-}
-
-void LR1::printTrace() {
-  vector<string> head = {"Estados", "Simbolos", "Entrada", "Accion"};
-  size_t w[4] = {head[0].size(), head[1].size(), head[2].size(),
-                 head[3].size()};
-  for (auto &r : trace) {
-    w[0] = max(w[0], r.states.size());
-    w[1] = max(w[1], r.symbols.size());
-    w[2] = max(w[2], r.input.size());
-  }
-  auto pad = [](string x, size_t n) {
-    return x + string(n > x.size() ? n - x.size() : 0, ' ');
-  };
-
-  cout << "\n--- SEGUIMIENTO DEL ANALISIS ---\n";
-  if (!panicSet.empty()) {
-    cout << "Modo panico, N = {";
-    for (size_t i = 0; i < panicSet.size(); i++) {
-      cout << (i ? ", " : "") << gr.symbolTable[panicSet[i]].name;
-    }
-    cout << "}\n";
-  }
-  cout << pad(head[0], w[0]) << "  " << pad(head[1], w[1]) << "  "
-       << pad(head[2], w[2]) << "  " << head[3] << "\n";
-  cout << string(w[0] + w[1] + w[2] + 6 + 20, '-') << "\n";
-  for (auto &r : trace) {
-    cout << pad(r.states, w[0]) << "  " << pad(r.symbols, w[1]) << "  "
-         << pad(r.input, w[2]) << "  " << r.action << "\n";
   }
 }

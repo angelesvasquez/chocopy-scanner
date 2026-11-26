@@ -282,7 +282,6 @@
             color: var(--mut)
         }
 
-        /* Tabla LR */
         .lr-wrap {
             overflow: auto;
             border: 1px solid var(--line);
@@ -356,7 +355,6 @@
                 color: #2c3a56
             }
 
-        /* Conflictos */
         .conf {
             border: 1px solid #4b2626;
             background: #1a1015;
@@ -812,7 +810,6 @@
             $('#transBody').innerHTML = t;
         }
 
-        /* ---------- Tabla ACTION / GOTO ---------- */
         function renderTable() {
             if (!DATA.action && !DATA.goto) {
                 $('#tableBody').innerHTML = '<h2>Tabla LR(1)</h2><p>El JSON no contiene los campos <code>action</code>/<code>goto</code>.</p>';
@@ -829,7 +826,6 @@
             const goIdx = {};
             (DATA.goto || []).forEach(g => { goIdx[g.state + '|' + g.symbol] = g.to; });
 
-            // Mapa de conflictos: state|symbol -> objeto conflicto (existing + incoming)
             const confMap = new Map();
             (DATA.conflicts || []).forEach(c => confMap.set(c.state + '|' + c.terminal, c));
 
@@ -898,7 +894,6 @@
             return `<td class="${cell.type}">${txt}</td>`;
         }
 
-        /* ---------- Conflictos ---------- */
         function renderConflicts() {
             const conf = DATA.conflicts || [];
             if (conf.length === 0) {
@@ -931,7 +926,6 @@
             $('#confBody').innerHTML = h;
         }
 
-        /* ---------- UI ---------- */
         document.querySelectorAll('.tab').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));

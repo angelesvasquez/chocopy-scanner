@@ -82,7 +82,6 @@ class LR1 {
   vector<int> stateStack;
   vector<Symbol> symStack;
   vector<TraceRow> trace;
-  bool traceEnabled = true;
 
   vector<Symbol> panicSet;
   vector<chocopy::Diagnostic> syntaxErrors;
@@ -144,15 +143,13 @@ public:
   void writeJSON(ostream &f) const;
 
   void setPanicSet(const vector<string> &names);
-  ast::NodePtr parse(Scanner *scanner, AstReduction buildNode,
-                     bool enableTrace = true);
+  ast::NodePtr parse(Scanner *scanner, AstReduction buildNode);
   void finishScanning();
   const vector<TokenData> &tokens() const { return tokBuf; }
   const vector<TraceRow> &traceRows() const { return trace; }
   const vector<chocopy::Diagnostic> &syntaxDiagnostics() const {
     return syntaxErrors;
   }
-  void printTrace();
 };
 
 #endif

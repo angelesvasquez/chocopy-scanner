@@ -1,17 +1,16 @@
 # Ejemplos de entrada
 
-Desde la raíz del repositorio, pasa cualquier ejemplo al lanzador:
+Desde la raíz del repositorio, abre el visualizador.
 
 ```powershell
-python choco.py ejemplos/validos/04_clases_y_herencia.py
-python choco.py ejemplos/errores/03_lexico_y_sintactico.py
+python choco.py
 ```
 
-Recarga el [visualizador](../frontend/visualizer/index.html) después de cada prueba para ver el informe de la última ejecución.
+En la pestaña **Entrada**, pulsa **Subir archivo** y selecciona un ejemplo. El visualizador mostrará el informe al terminar el análisis.
 
 ## Programas válidos
 
-Estos ejemplos se aceptan con código de salida `0`.
+El visualizador muestra **Aceptado** para estos ejemplos.
 
 | Archivo | Qué puedes inspeccionar |
 |---|---|
@@ -22,7 +21,7 @@ Estos ejemplos se aceptan con código de salida `0`.
 
 ## Programas con errores
 
-Estos ejemplos se rechazan con código de salida `1`.
+El visualizador muestra **Rechazado** para estos ejemplos.
 
 | Archivo | Diagnósticos esperados |
 |---|---|

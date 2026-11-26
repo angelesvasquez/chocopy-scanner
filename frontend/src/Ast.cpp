@@ -3,7 +3,6 @@
 #include "../../semantics/src/SymbolTable.h"
 #include <algorithm>
 #include <fstream>
-#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -418,42 +417,6 @@ void writeScopes(std::ostream &out, const ast::Node &ast,
   });
 }
 
-class ReportStaging {
-public:
-  ReportStaging(const fs::path &parent, bool withCompanion) {
-    if (withCompanion) {
-      directory = parent / ".chocopy-ast-export";
-      if (!fs::create_directory(directory)) {
-        throw std::runtime_error(
-            "El directorio temporal de exportacion del AST ya existe.");
-      }
-      return;
-    }
-    std::random_device random;
-    for (int attempt = 0; attempt < 8; ++attempt) {
-      auto candidate = parent / (".chocopy-ast-" + std::to_string(random()));
-      if (fs::create_directory(candidate)) {
-        directory = std::move(candidate);
-        return;
-      }
-    }
-    throw std::runtime_error("No se pudo preparar la escritura del AST JSON.");
-  }
-
-  ~ReportStaging() {
-    std::error_code error;
-    fs::remove(file("ast.json"), error);
-    fs::remove(file("ast-data.js"), error);
-    fs::remove(file("previous-data.js"), error);
-    fs::remove(directory, error);
-  }
-
-  fs::path file(const char *filename) const { return directory / filename; }
-
-private:
-  fs::path directory;
-};
-
 void checkDestination(const fs::path &source, const fs::path &destination) {
   const bool destinationExists = fs::exists(destination);
   const bool sameFile =
@@ -463,66 +426,11 @@ void checkDestination(const fs::path &source, const fs::path &destination) {
                 fs::weakly_canonical(fs::absolute(destination));
   if (sameFile) {
     throw std::runtime_error(
-        "Un destino de la exportacion del AST coincide con el archivo fuente.");
+        "El destino del informe coincide con el archivo fuente.");
   }
   if (destinationExists && !fs::is_regular_file(destination)) {
     throw std::runtime_error(
-        "Un destino de la exportacion del AST no es un archivo.");
-  }
-}
-
-void stageReport(const fs::path &file, std::string_view data,
-                 const char *global = nullptr) {
-  std::ofstream out(file, std::ios::binary);
-  if (!out) {
-    throw std::runtime_error(
-        "No se pudo abrir un archivo de exportacion del AST.");
-  }
-  if (global)
-    out << "globalThis." << global << " = ";
-  out << data;
-  if (global)
-    out << ";\n";
-  out.close();
-  if (!out) {
-    throw std::runtime_error(
-        "No se pudo guardar un archivo de exportacion del AST.");
-  }
-}
-
-void publish(const std::string &data, const fs::path &sourceFile,
-             const fs::path &outputFile, const char *canonicalName,
-             const char *companionName, const char *global) {
-  const bool withCompanion = outputFile.filename() == canonicalName;
-  const auto companion = outputFile.parent_path() / companionName;
-  const ReportStaging staging(outputFile.parent_path(), withCompanion);
-  checkDestination(sourceFile, outputFile);
-  if (withCompanion)
-    checkDestination(sourceFile, companion);
-
-  const auto stagedJson = staging.file("ast.json");
-  stageReport(stagedJson, data);
-  if (!withCompanion) {
-    fs::rename(stagedJson, outputFile);
-    return;
-  }
-
-  const auto stagedScript = staging.file("ast-data.js");
-  const auto previous = staging.file("previous-data.js");
-  stageReport(stagedScript, data, global);
-  const bool hadCompanion = fs::exists(companion);
-  if (hadCompanion)
-    fs::copy_file(companion, previous);
-  fs::rename(stagedScript, companion);
-  try {
-    fs::rename(stagedJson, outputFile);
-  } catch (...) {
-    if (hadCompanion) {
-      fs::rename(previous, companion);
-    } else {
-      fs::remove(companion);
-    }
-    throw;
+        "El destino del informe no es un archivo.");
   }
 }
 
@@ -545,40 +453,17 @@ Grammar loadChocoPyGrammar() {
   return grammar;
 }
 
-ast::NodePtr parseAst(LR1 &parser, Scanner &scanner, bool trace) {
-  return parser.parse(&scanner, buildNode, trace);
-}
-
-void printAst(const ast::Node &node, std::ostream &output, int depth) {
-  output << std::string(depth * 2, ' ') << node.kind;
-  if (!node.text.empty())
-    output << ' ' << node.text;
-  if (node.location.line > 0)
-    output << " [" << node.location.line << ':' << node.location.col << ']';
-  if (node.type)
-    output << " : " << *node.type;
-  output << '\n';
-
-  for (const auto &child : node.children) {
-    printAst(*child, output, depth + 1);
-  }
-}
-
-void writeAstJson(const ast::Node &root, const fs::path &sourceFile,
-                  const fs::path &outputFile) {
-  std::ostringstream out;
-  writeSource(out, sourceFile);
-  out << ",\n  \"ast\": ";
-  writeNode(out, root);
-  out << "\n}\n";
-  publish(out.str(), sourceFile, outputFile, "ast.json", "ast-data.js",
-          "chocopyAst");
+ast::NodePtr parseAst(LR1 &parser, Scanner &scanner) {
+  return parser.parse(&scanner, buildNode);
 }
 
 void writeCompilationReport(const CompilationReport &report,
                             const fs::path &sourceFile,
                             const fs::path &outputFile) {
-  std::ostringstream out;
+  checkDestination(sourceFile, outputFile);
+  std::ofstream out(outputFile, std::ios::binary);
+  if (!out)
+    throw std::runtime_error("No se pudo abrir el informe.");
   writeSource(out, sourceFile);
   out << ",\n  \"sourceText\": ";
   if (report.sourceText)
@@ -642,8 +527,9 @@ void writeCompilationReport(const CompilationReport &report,
   else
     out << "null";
   out << "\n}\n";
-  publish(out.str(), sourceFile, outputFile, "report.json", "report-data.js",
-          "chocopyReport");
+  out.close();
+  if (!out)
+    throw std::runtime_error("No se pudo guardar el informe.");
 }
 
 }

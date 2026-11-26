@@ -11,19 +11,9 @@ Desde la raíz del repositorio, ejecuta:
 python choco.py
 ```
 
-El lanzador compila el ejecutable si todavía no existe y abre el visualizador local. En la pestaña **Entrada**, haz clic en **Subir archivo** y elige un `.py` de hasta 1 MiB. El análisis se ejecuta al seleccionar el archivo. Puedes subir otro desde **Entrada** y cerrar el servidor con `Ctrl+C` en la terminal.
+El lanzador actualiza el ejecutable con CMake y abre el visualizador local. En la pestaña **Entrada**, haz clic en **Subir archivo** y elige un `.py` de hasta 1 MiB. El análisis se ejecuta al seleccionar el archivo. Puedes subir otro desde **Entrada** y cerrar el servidor con `Ctrl+C` en la terminal.
 
-Para ejecutar el compilador directamente desde la consola con un archivo:
-
-```text
-cmake -S . -B build
-cmake --build build
-python choco.py scanner/tests/validos/01_funcion_basica.py
-```
-
-Agrega `--trace` para ver la traza LR(1). La gramática se incorpora al binario al compilar.
-Desde otro directorio, usa la ruta al lanzador y la ruta al archivo fuente.
-El código de salida es `0` si el análisis acepta el programa, `1` si lo rechaza o el archivo no está disponible y `2` si falla la invocación.
+La gramática se incorpora al binario al compilar. El servidor local recibe el archivo del visualizador y ejecuta el compilador en un directorio temporal para cada análisis.
 
 Después de construir el AST, el compilador registra las declaraciones del módulo, las clases y las funciones, y resuelve las referencias léxicas. Reporta redeclaraciones, nombres sin declaración y errores relacionados con `global` y `nonlocal`. Los atributos de clase se acceden por medio del receptor, por ejemplo `self.valor`.
 
@@ -35,15 +25,7 @@ El AST de un programa aceptado incluye las ubicaciones y los tipos inferidos. La
 
 ### Visualizador del compilador
 
-```text
-python choco.py scanner/tests/validos/10_bloques_anidados.py
-```
-
-Con un archivo pasado por consola, puedes abrir [frontend/visualizer/index.html](./frontend/visualizer/index.html) para leer el informe guardado. Las pestañas muestran el código fuente con números de línea, los diagnósticos, los tokens, el análisis LR(1), los ámbitos y el AST tipado. Selecciona un estado del autómata para consultar sus transiciones, sus ítems y las filas de ACTION y GOTO. Las ramas del AST aparecen expandidas al cargar el informe.
-
-El lanzador guarda el informe en `frontend/visualizer/report.json` y genera `report-data.js` para que el HTML también pueda abrirse con doble clic. El destino predeterminado se calcula desde la ubicación del lanzador. El informe se guarda también si el programa se rechaza y el compilador conserva el código de salida `1`. Con errores léxicos o sintácticos, la página muestra las fases disponibles.
-
-Usa `--report-json RUTA` para cambiar el destino del informe o `--ast-json RUTA` para exportar solo el AST de un programa aceptado. El visualizador usa `ast.json` cuando no encuentra un informe completo. Agrega `--trace` para imprimir la traza también en la consola.
+Las pestañas muestran el código fuente con números de línea, los diagnósticos, los tokens, la traza LR(1), los ámbitos y el AST tipado. Selecciona un estado del autómata para consultar sus transiciones, sus ítems y las filas de ACTION y GOTO. Todos los desplegables aparecen expandidos al cargar el informe. Si se rechaza el programa, el visualizador muestra los diagnósticos y los resultados de las fases disponibles.
 
 ### Pruebas de integración
 
@@ -53,7 +35,7 @@ cmake -E chdir build ctest --output-on-failure
 
 Las pruebas cubren el reporte por fases, la recuperación sintáctica, el análisis semántico y la exportación del AST tipado.
 
-La carpeta [ejemplos](./ejemplos/README.md) contiene entradas válidas y con errores para probar el compilador desde el lanzador.
+La carpeta [ejemplos](./ejemplos/README.md) contiene entradas válidas y con errores para subir desde el visualizador.
 
 ## Módulos
 

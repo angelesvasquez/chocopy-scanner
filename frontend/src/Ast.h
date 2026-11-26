@@ -2,7 +2,6 @@
 
 #include "../../common/Diagnostic.h"
 #include <filesystem>
-#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -61,8 +60,7 @@ class Scanner;
 namespace chocopy {
 
 Grammar loadChocoPyGrammar();
-ast::NodePtr parseAst(LR1 &parser, Scanner &scanner, bool trace);
-void printAst(const ast::Node &node, std::ostream &output, int depth = 0);
+ast::NodePtr parseAst(LR1 &parser, Scanner &scanner);
 
 class SymbolTable;
 
@@ -76,9 +74,6 @@ struct CompilationReport {
   const std::vector<Diagnostic> &semantic;
 };
 
-void writeAstJson(const ast::Node &root,
-                  const std::filesystem::path &sourceFile,
-                  const std::filesystem::path &outputFile);
 void writeCompilationReport(const CompilationReport &report,
                             const std::filesystem::path &sourceFile,
                             const std::filesystem::path &outputFile);

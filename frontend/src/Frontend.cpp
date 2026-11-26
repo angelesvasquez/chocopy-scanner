@@ -46,8 +46,7 @@ Frontend::Frontend(const std::filesystem::path &sourceFile)
     : sourceFile(sourceFile), scanner(sourceFile, false),
       parser(chocopy::loadChocoPyGrammar()) {}
 
-bool Frontend::run(bool trace, const std::filesystem::path &astFile,
-                   const std::filesystem::path &reportFile) {
+bool Frontend::run(const std::filesystem::path &reportFile) {
   ast::NodePtr ast;
   const LR1 *parsed = nullptr;
   if (scanner.errors() == 0) {
@@ -57,12 +56,9 @@ bool Frontend::run(bool trace, const std::filesystem::path &astFile,
     }
 
     parser.setPanicSet({"stmt", "func_decl", "class_item", "decl_item"});
-    ast = chocopy::parseAst(parser, scanner, trace || !reportFile.empty());
-    // Syntax recovery can stop before it has requested every token.
+    ast = chocopy::parseAst(parser, scanner);
     parser.finishScanning();
     parsed = &parser;
-    if (trace)
-      parser.printTrace();
   }
 
   std::vector<chocopy::Diagnostic> semantic;
@@ -84,28 +80,14 @@ bool Frontend::run(bool trace, const std::filesystem::path &astFile,
   const bool accepted = ast && scanner.errors() == 0 &&
                         parser.syntaxDiagnostics().empty() && semantic.empty();
   std::cout << "Resultado: " << (accepted ? "ACEPTADO" : "RECHAZADO") << '\n';
-  if (!reportFile.empty()) {
-    const chocopy::CompilationReport report{
-        accepted,  parsed ? &scanner.sourceText() : nullptr,
-        ast.get(), symbols ? &*symbols : nullptr,
-        parsed,    scanner.diagnostics(),
-        semantic};
-    chocopy::writeCompilationReport(report, sourceFile, reportFile);
-    const auto path = reportFile.u8string();
-    std::cout << "Informe guardado en " << std::string(path.begin(), path.end())
-              << '\n';
-    return accepted;
-  }
-  if (!accepted)
-    return false;
-
-  if (astFile.empty()) {
-    chocopy::printAst(*ast, std::cout);
-  } else {
-    chocopy::writeAstJson(*ast, sourceFile, astFile);
-    const auto path = astFile.u8string();
-    std::cout << "AST guardado en " << std::string(path.begin(), path.end())
-              << '\n';
-  }
-  return true;
+  const chocopy::CompilationReport report{
+      accepted,  parsed ? &scanner.sourceText() : nullptr,
+      ast.get(), symbols ? &*symbols : nullptr,
+      parsed,    scanner.diagnostics(),
+      semantic};
+  chocopy::writeCompilationReport(report, sourceFile, reportFile);
+  const auto path = reportFile.u8string();
+  std::cout << "Informe guardado en " << std::string(path.begin(), path.end())
+            << '\n';
+  return accepted;
 }

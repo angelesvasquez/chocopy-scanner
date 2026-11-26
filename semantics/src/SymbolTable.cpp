@@ -142,8 +142,6 @@ void SymbolTable::bindDirective(Symbol &symbol) {
 }
 
 void SymbolTable::visitFunction(const ast::Node &node, Scope &scope) {
-  // Class members are found through the receiver, outside the lexical chain of
-  // a method.
   const Scope *parent =
       scope.kind() == ScopeKind::Class ? scope.parent() : &scope;
   auto &function = createScope(node, ScopeKind::Function, parent);
@@ -173,7 +171,7 @@ void SymbolTable::resolveName(const ast::Node &node, const Scope &scope,
   }
   const auto *target = binding->definition();
   if (!target)
-    return; // The invalid directive already has a diagnostic.
+    return;
   if (write && !isVariable(target)) {
     report(node, "'" + node.text + "' no es una variable asignable.");
   } else if (write && binding->scope != &scope) {

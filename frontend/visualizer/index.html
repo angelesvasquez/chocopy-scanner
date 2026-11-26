@@ -297,9 +297,9 @@
     return fragment;
   }
 
-  function detail(label, open = false, className = 'group') {
+  function detail(label, className = 'group') {
     const section = element('details', className, '');
-    section.open = open;
+    section.open = true;
     section.append(element('summary', '', label));
     return section;
   }
@@ -366,6 +366,7 @@
         if (rows.length) stateContent.append(element('h3', '', title), table(headers, rows, {technical: true}));
       }
     };
+    displayState(Number(selector.value));
     selector.addEventListener('change', () => displayState(Number(selector.value)));
     const grammar = detail('Producciones y conjuntos FIRST');
     grammar.append(table(['Regla', 'Producción'], data.productions.map((rule, i) => [i, productionText(rule)]), {technical: true}),
@@ -375,9 +376,6 @@
         return [names[entry.symbol], values.join(', ')];
       }), {technical: true}));
     panel.append(field, stateContent, grammar);
-    panel.addEventListener('toggle', () => {
-      if (panel.open && !stateContent.hasChildNodes()) displayState(Number(selector.value));
-    });
     return panel;
   }
 
@@ -387,7 +385,7 @@
       panel.append(element('p', '', 'El análisis sintáctico no se ejecutó.'));
       return;
     }
-    const trace = detail(`Traza de análisis · ${report.trace.length} pasos`, true);
+    const trace = detail(`Traza de análisis · ${report.trace.length} pasos`);
     trace.append(table(['Paso', 'Estados', 'Símbolos', 'Entrada', 'Acción'], report.trace.map((row, i) =>
       [i + 1, row.states, row.symbols, row.input, row.action]), {technical: true}));
     panel.append(trace, renderAutomaton(report.automaton));
@@ -403,7 +401,7 @@
     const labels = scopes.map(scope => scope.name ? `${scope.name} (#${scope.id})` : 'Módulo');
     for (const scope of scopes) {
       const label = scope.name ? `${words[scope.kind] ?? scope.kind} ${labels[scope.id]} · ${position(scope)}` : 'Módulo';
-      const section = detail(label, true, 'scope');
+      const section = detail(label, 'scope');
       if (scope.parent !== null) section.append(element('p', '', `Ámbito léxico padre: ${labels[scope.parent]}`));
       if (scope.entries.length) {
         section.append(table(['Nombre', 'Clase de símbolo', 'Tipo', 'Declaración', 'Ámbito de destino'],
@@ -417,17 +415,13 @@
   }
 
   function renderReport(report) {
-    if (typeof report?.source !== 'string') throw new Error('Informe inválido');
+    if (typeof report?.source !== 'string' || typeof report.accepted !== 'boolean') {
+      throw new Error('Informe inválido');
+    }
     for (const id of ['source-code', 'diagnostics', 'tokens', 'syntax', 'scopes', 'tree']) {
       byId(id).replaceChildren();
     }
     show('source').textContent = report.source;
-    if (typeof report.accepted !== 'boolean') {
-      show('syntax-tree');
-      byId('tree').append(renderNode(report.ast));
-      return;
-    }
-
     const result = show('result');
     result.textContent = report.accepted ? 'Aceptado' : 'Rechazado';
     result.classList.toggle('accepted', report.accepted);
@@ -463,6 +457,10 @@
       const file = picker.files[0];
       if (!file) return;
       picker.value = '';
+      if (file.size > 1024 * 1024) {
+        setStatus('El archivo debe pesar como máximo 1 MiB.', true);
+        return;
+      }
       button.disabled = true;
       setStatus(`Analizando ${file.name}…`);
       try {
@@ -488,43 +486,10 @@
     selectTab('tab-input');
   }
 
-  async function loadReport(read) {
-    try {
-      renderReport(await read());
-    } catch {
-      setStatus('Ejecuta python choco.py para subir un archivo desde el visualizador.', true);
-    }
-  }
-
-  function readLocalFile(filename, globalName) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = filename;
-      script.onload = () => globalThis[globalName] ? resolve(globalThis[globalName]) : reject();
-      script.onerror = reject;
-      document.head.append(script);
-    });
-  }
-
-  async function startHttpVisualizer() {
-    const compiler = await fetch('/api/compile', {cache: 'no-store'}).catch(() => null);
-    if (compiler?.status === 204) {
-      enableUpload();
-      return;
-    }
-    await loadReport(async () => {
-      let response = await fetch('report.json', {cache: 'no-store'});
-      if (response.status === 404) response = await fetch('ast.json', {cache: 'no-store'});
-      if (!response.ok) throw new Error('No se pudo descargar el informe');
-      return response.json();
-    });
-  }
-
   if (location.protocol === 'http:' || location.protocol === 'https:') {
-    startHttpVisualizer();
-  } else if (location.protocol === 'file:') {
-    loadReport(() => readLocalFile('report-data.js', 'chocopyReport')
-      .catch(() => readLocalFile('ast-data.js', 'chocopyAst')));
+    enableUpload();
+  } else {
+    setStatus('Ejecuta python choco.py para subir un archivo desde el visualizador.', true);
   }
 </script>
 </body>
