@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../parser/src/Ast.h"
+#include "../../frontend/src/Ast.h"
 #include <memory>
 #include <string>
 #include <unordered_map>

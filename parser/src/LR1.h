@@ -2,7 +2,7 @@
 #define LR1_H
 
 #include "../../scanner/src/scanner.h"
-#include "Ast.h"
+#include "../../frontend/src/Ast.h"
 #include "Grammar.h"
 #include <algorithm>
 #include <iostream>

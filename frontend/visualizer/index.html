@@ -32,7 +32,8 @@
     .result { display: inline-block; margin: .75rem 0 0; padding: .15rem .65rem; border-radius: 1rem; font-weight: 650; background: #e6eef5; }
     .accepted { color: #14583f; background: #dcf3e9; }
     .rejected { color: #8b2a25; background: #fbe9e7; }
-    #status { margin: .75rem 0 0; color: #9a2d26; }
+    #status { margin: .75rem 0 0; color: var(--muted); }
+    #status.error { color: #9a2d26; }
     #status:empty { display: none; }
     .source {
       margin: .4rem 0 0;
@@ -83,6 +84,8 @@
     button, select { padding: .25rem .5rem; border: 1px solid var(--branch); border-radius: .3rem; background: white; color: var(--ink); font: inherit; }
     button:not(:disabled) { cursor: pointer; }
     button:disabled { opacity: .55; }
+    .upload { margin-bottom: 1rem; }
+    #upload-button { padding: .45rem .8rem; font-weight: 650; color: white; background: var(--accent); border-color: var(--accent); }
     .group, .scope { margin-top: .75rem; }
     .group > summary, .scope > summary { font-weight: 650; }
     .group > :not(summary), .scope > :not(summary) { margin: .6rem 0; }
@@ -119,7 +122,14 @@
     <button type="button" id="tab-semantics" role="tab" aria-controls="semantics" aria-selected="false" tabindex="-1">Ámbitos</button>
     <button type="button" id="tab-tree" role="tab" aria-controls="syntax-tree" aria-selected="false" tabindex="-1">AST</button>
   </div>
-  <section class="panel" id="input" role="tabpanel" aria-labelledby="tab-input" tabindex="0" hidden><h2>Código fuente</h2><div id="source-code"></div></section>
+  <section class="panel" id="input" role="tabpanel" aria-labelledby="tab-input" tabindex="0" hidden>
+    <h2>Código fuente</h2>
+    <div class="upload" id="upload" hidden>
+      <button type="button" id="upload-button">Subir archivo</button>
+      <input type="file" id="source-file" accept=".py" hidden>
+    </div>
+    <div id="source-code"></div>
+  </section>
   <section class="panel" id="summary" role="tabpanel" aria-labelledby="tab-summary" tabindex="0" hidden><h2>Diagnósticos</h2><div id="diagnostics"></div></section>
   <section class="panel" id="lexer" role="tabpanel" aria-labelledby="tab-lexer" tabindex="0" hidden><h2>Análisis léxico</h2><div id="tokens"></div></section>
   <section class="panel" id="parser" role="tabpanel" aria-labelledby="tab-parser" tabindex="0" hidden><h2>Análisis sintáctico LR(1)</h2><div id="syntax"></div></section>
@@ -175,8 +185,8 @@
     return node;
   }
 
-  function initializeTabs(initialId) {
-    const tabs = [...show('navigation').children];
+  function initializeTabs() {
+    const tabs = [...byId('navigation').children];
     function activate(active) {
       for (const tab of tabs) {
         const selected = tab === active;
@@ -185,20 +195,27 @@
         byId(tab.getAttribute('aria-controls')).hidden = !selected;
       }
     }
-    for (const [index, tab] of tabs.entries()) {
+    for (const tab of tabs) {
       tab.addEventListener('click', () => activate(tab));
       tab.addEventListener('keydown', event => {
-        const destinations = {ArrowLeft: (index + tabs.length - 1) % tabs.length,
-          ArrowRight: (index + 1) % tabs.length, Home: 0, End: tabs.length - 1};
+        const visible = tabs.filter(item => !item.hidden);
+        const index = visible.indexOf(tab);
+        const destinations = {ArrowLeft: (index + visible.length - 1) % visible.length,
+          ArrowRight: (index + 1) % visible.length, Home: 0, End: visible.length - 1};
         if (!Object.hasOwn(destinations, event.key)) return;
         event.preventDefault();
-        const next = tabs[destinations[event.key]];
+        const next = visible[destinations[event.key]];
         activate(next);
         next.focus();
       });
     }
-    activate(byId(initialId));
+    return id => {
+      show('navigation');
+      activate(byId(id));
+    };
   }
+
+  const selectTab = initializeTabs();
 
   function renderSource(source) {
     const container = byId('source-code');
@@ -401,6 +418,9 @@
 
   function renderReport(report) {
     if (typeof report?.source !== 'string') throw new Error('Informe inválido');
+    for (const id of ['source-code', 'diagnostics', 'tokens', 'syntax', 'scopes', 'tree']) {
+      byId(id).replaceChildren();
+    }
     show('source').textContent = report.source;
     if (typeof report.accepted !== 'boolean') {
       show('syntax-tree');
@@ -410,7 +430,8 @@
 
     const result = show('result');
     result.textContent = report.accepted ? 'Aceptado' : 'Rechazado';
-    result.classList.add(report.accepted ? 'accepted' : 'rejected');
+    result.classList.toggle('accepted', report.accepted);
+    result.classList.toggle('rejected', !report.accepted);
     renderSource(report.sourceText);
     renderDiagnostics(report.diagnostics);
     byId('tokens').append(report.tokens.length ? table(['Terminal', 'Lexema', 'Línea:columna'],
@@ -418,20 +439,60 @@
       element('p', '', 'No hay tokens disponibles.'));
     renderSyntax(report);
     renderScopes(report.scopes);
+    byId('ast-heading').textContent = report.ast && !report.accepted ? 'AST con errores semánticos' : 'AST tipado';
     if (report.ast) {
-      if (!report.accepted) byId('ast-heading').textContent = 'AST con errores semánticos';
       byId('tree').append(renderNode(report.ast));
     } else {
       byId('tree').append(element('p', '', 'No se obtuvo un AST completo.'));
     }
-    initializeTabs(report.accepted ? 'tab-input' : 'tab-summary');
+    for (const tab of byId('navigation').children) tab.hidden = false;
+    selectTab(report.accepted ? 'tab-input' : 'tab-summary');
+  }
+
+  function setStatus(message, error = false) {
+    const status = byId('status');
+    status.textContent = message;
+    status.classList.toggle('error', error);
+  }
+
+  function enableUpload() {
+    const button = byId('upload-button');
+    const picker = byId('source-file');
+    button.addEventListener('click', () => picker.click());
+    picker.addEventListener('change', async () => {
+      const file = picker.files[0];
+      if (!file) return;
+      picker.value = '';
+      button.disabled = true;
+      setStatus(`Analizando ${file.name}…`);
+      try {
+        const query = new URLSearchParams({name: file.name});
+        const response = await fetch(`/api/compile?${query}`, {
+          method: 'POST', headers: {'Content-Type': 'application/octet-stream'}, body: file
+        });
+        const report = await response.json();
+        if (!response.ok) {
+          setStatus(report.error, true);
+          return;
+        }
+        renderReport(report);
+        setStatus('');
+      } catch {
+        setStatus('No se pudo analizar el archivo. Comprueba que el lanzador siga abierto.', true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    show('upload');
+    for (const tab of byId('navigation').children) tab.hidden = tab.id !== 'tab-input';
+    selectTab('tab-input');
   }
 
   async function loadReport(read) {
     try {
       renderReport(await read());
     } catch {
-      byId('status').textContent = 'No se pudo cargar el análisis. Genera report.json en esta carpeta y recarga la página.';
+      setStatus('Ejecuta python choco.py para subir un archivo desde el visualizador.', true);
     }
   }
 
@@ -445,13 +506,22 @@
     });
   }
 
-  if (location.protocol === 'http:' || location.protocol === 'https:') {
-    loadReport(async () => {
+  async function startHttpVisualizer() {
+    const compiler = await fetch('/api/compile', {cache: 'no-store'}).catch(() => null);
+    if (compiler?.status === 204) {
+      enableUpload();
+      return;
+    }
+    await loadReport(async () => {
       let response = await fetch('report.json', {cache: 'no-store'});
       if (response.status === 404) response = await fetch('ast.json', {cache: 'no-store'});
       if (!response.ok) throw new Error('No se pudo descargar el informe');
       return response.json();
     });
+  }
+
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    startHttpVisualizer();
   } else if (location.protocol === 'file:') {
     loadReport(() => readLocalFile('report-data.js', 'chocopyReport')
       .catch(() => readLocalFile('ast-data.js', 'chocopyAst')));

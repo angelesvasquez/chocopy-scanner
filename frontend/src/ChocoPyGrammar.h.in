@@ -1,3 +1,0 @@
-#pragma once
-
-inline constexpr char chocopyGrammar[] = R"ChocoPyGrammar(@CHOCOPY_GRAMMAR@)ChocoPyGrammar";

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../../common/Diagnostic.h"
+#include <filesystem>
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -51,3 +53,34 @@ private:
 };
 
 } // namespace ast
+
+class Grammar;
+class LR1;
+class Scanner;
+
+namespace chocopy {
+
+Grammar loadChocoPyGrammar();
+ast::NodePtr parseAst(LR1 &parser, Scanner &scanner, bool trace);
+void printAst(const ast::Node &node, std::ostream &output, int depth = 0);
+
+class SymbolTable;
+
+struct CompilationReport {
+  bool accepted;
+  const std::string *sourceText;
+  const ast::Node *ast;
+  const SymbolTable *symbols;
+  const LR1 *parser;
+  const std::vector<Diagnostic> &lexical;
+  const std::vector<Diagnostic> &semantic;
+};
+
+void writeAstJson(const ast::Node &root,
+                  const std::filesystem::path &sourceFile,
+                  const std::filesystem::path &outputFile);
+void writeCompilationReport(const CompilationReport &report,
+                            const std::filesystem::path &sourceFile,
+                            const std::filesystem::path &outputFile);
+
+} // namespace chocopy

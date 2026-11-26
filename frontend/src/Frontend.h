@@ -14,8 +14,6 @@ class Frontend {
   Scanner scanner;
   LR1 parser;
 
-  static Grammar loadGrammar();
-
 public:
   explicit Frontend(const std::filesystem::path &sourceFile);
 

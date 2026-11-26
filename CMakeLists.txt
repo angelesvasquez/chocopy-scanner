@@ -4,13 +4,12 @@ project(ChocoPy LANGUAGES CXX)
 set(grammar_file "${CMAKE_CURRENT_SOURCE_DIR}/parser/src/input.txt")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${grammar_file}")
 file(READ "${grammar_file}" CHOCOPY_GRAMMAR)
-configure_file(frontend/src/ChocoPyGrammar.h.in generated/ChocoPyGrammar.h @ONLY)
+configure_file(frontend/src/Ast.cpp generated/Ast.cpp @ONLY)
 
 add_executable(chocopy_core
     frontend/src/main.cpp
     frontend/src/Frontend.cpp
-    frontend/src/ChocoPyAst.cpp
-    frontend/src/AstJson.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/Ast.cpp"
     parser/src/Grammar.cpp
     parser/src/LR1.cpp
     scanner/src/scanner.cpp
@@ -18,7 +17,7 @@ add_executable(chocopy_core
     semantics/src/TypeChecker.cpp
 )
 target_compile_features(chocopy_core PRIVATE cxx_std_17)
-target_include_directories(chocopy_core PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_include_directories(chocopy_core PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/src")
 set_target_properties(chocopy_core PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}/bin>"
 )

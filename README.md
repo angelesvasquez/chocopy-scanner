@@ -4,8 +4,16 @@ Compilador ChocoPy con scanner léxico, parser LR(1), construcción del AST y an
 
 ## Compilación y uso
 
-Se requiere CMake 3.16 o posterior, un compilador compatible con C++17 y Python 3.
-Desde la raíz del repositorio, compila una vez y ejecuta el lanzador con el programa fuente:
+Se requiere CMake 3.16 o posterior, un compilador compatible con C++17 y Python 3.7 o posterior.
+Desde la raíz del repositorio, ejecuta:
+
+```text
+python choco.py
+```
+
+El lanzador compila el ejecutable si todavía no existe y abre el visualizador local. En la pestaña **Entrada**, haz clic en **Subir archivo** y elige un `.py` de hasta 1 MiB. El análisis se ejecuta al seleccionar el archivo. Puedes subir otro desde **Entrada** y cerrar el servidor con `Ctrl+C` en la terminal.
+
+Para ejecutar el compilador directamente desde la consola con un archivo:
 
 ```text
 cmake -S . -B build
@@ -31,7 +39,7 @@ El AST de un programa aceptado incluye las ubicaciones y los tipos inferidos. La
 python choco.py scanner/tests/validos/10_bloques_anidados.py
 ```
 
-Abre [frontend/visualizer/index.html](./frontend/visualizer/index.html). Las pestañas muestran el código fuente con números de línea, los diagnósticos, los tokens, el análisis LR(1), los ámbitos y el AST tipado. Selecciona un estado del autómata para consultar sus transiciones, sus ítems y las filas de ACTION y GOTO. Las ramas del AST aparecen expandidas al cargar el informe.
+Con un archivo pasado por consola, puedes abrir [frontend/visualizer/index.html](./frontend/visualizer/index.html) para leer el informe guardado. Las pestañas muestran el código fuente con números de línea, los diagnósticos, los tokens, el análisis LR(1), los ámbitos y el AST tipado. Selecciona un estado del autómata para consultar sus transiciones, sus ítems y las filas de ACTION y GOTO. Las ramas del AST aparecen expandidas al cargar el informe.
 
 El lanzador guarda el informe en `frontend/visualizer/report.json` y genera `report-data.js` para que el HTML también pueda abrirse con doble clic. El destino predeterminado se calcula desde la ubicación del lanzador. El informe se guarda también si el programa se rechaza y el compilador conserva el código de salida `1`. Con errores léxicos o sintácticos, la página muestra las fases disponibles.
 

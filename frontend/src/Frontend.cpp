@@ -1,12 +1,9 @@
 #include "Frontend.h"
 #include "../../semantics/src/TypeChecker.h"
-#include "AstJson.h"
-#include "ChocoPyAst.h"
-#include "ChocoPyGrammar.h"
+#include "Ast.h"
 #include <algorithm>
 #include <iterator>
 #include <optional>
-#include <sstream>
 #include <stdexcept>
 #include <tuple>
 
@@ -45,19 +42,9 @@ void printDiagnostics(const std::vector<chocopy::Diagnostic> &lexical,
 
 } // namespace
 
-Grammar Frontend::loadGrammar() {
-  Grammar grammar;
-  std::istringstream input(chocopyGrammar);
-  grammar.load(input);
-  if (grammar.productions.empty()) {
-    throw std::runtime_error("La gramatica ChocoPy esta vacia.");
-  }
-  return grammar;
-}
-
 Frontend::Frontend(const std::filesystem::path &sourceFile)
     : sourceFile(sourceFile), scanner(sourceFile, false),
-      parser(loadGrammar()) {}
+      parser(chocopy::loadChocoPyGrammar()) {}
 
 bool Frontend::run(bool trace, const std::filesystem::path &astFile,
                    const std::filesystem::path &reportFile) {
@@ -70,8 +57,7 @@ bool Frontend::run(bool trace, const std::filesystem::path &astFile,
     }
 
     parser.setPanicSet({"stmt", "func_decl", "class_item", "decl_item"});
-    ast = parser.parse(&scanner, chocopy::buildNode,
-                       trace || !reportFile.empty());
+    ast = chocopy::parseAst(parser, scanner, trace || !reportFile.empty());
     // Syntax recovery can stop before it has requested every token.
     parser.finishScanning();
     parsed = &parser;
