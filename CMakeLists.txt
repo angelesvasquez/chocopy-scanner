@@ -22,10 +22,6 @@ set_target_properties(chocopy_core PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}/bin>"
 )
 
-if(MINGW)
-    target_link_options(chocopy_core PRIVATE -municode)
-endif()
-
 include(CTest)
 if(BUILD_TESTING)
     foreach(suite IN ITEMS diagnostics semantics export)

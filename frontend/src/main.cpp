@@ -1,12 +1,9 @@
 #include "Frontend.h"
 #include <exception>
 #include <iostream>
+#include <string>
 
-#ifdef _WIN32
-int wmain(int argc, wchar_t **argv) {
-#else
 int main(int argc, char **argv) {
-#endif
   const char *usage = "Uso: python choco.py archivo_entrada.py [--trace] "
                       "[--report-json RUTA | --ast-json RUTA]\n";
   if (argc < 2) {
@@ -20,7 +17,7 @@ int main(int argc, char **argv) {
     std::filesystem::path astFile;
     std::filesystem::path reportFile;
     for (int i = 2; i < argc; ++i) {
-      const std::filesystem::path option(argv[i]);
+      const std::string option(argv[i]);
       if (option == "--trace" && !trace) {
         trace = true;
       } else if (astFile.empty() && reportFile.empty() && i + 1 < argc &&

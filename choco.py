@@ -64,8 +64,8 @@ def serve_visualizer(executable: Path, visualizer: Path) -> None:
                     report = Path(directory) / "report.json"
                     source.write_bytes(content)
                     result = subprocess.run(
-                        [str(executable), str(source), "--report-json", str(report)],
-                        stdout=subprocess.DEVNULL, check=False, timeout=30,
+                        [str(executable), source.name, "--report-json", report.name],
+                        cwd=directory, stdout=subprocess.DEVNULL, check=False, timeout=30,
                     )
                     if result.returncode not in (0, 1):
                         self.send_json(500, {"error": "El compilador no pudo completar el análisis."})
