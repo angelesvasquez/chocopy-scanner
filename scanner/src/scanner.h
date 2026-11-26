@@ -51,8 +51,7 @@ class Scanner {
   void scan_step();
 
 public:
-  Scanner(const std::filesystem::path &filename = "input.txt",
-          bool verbose = true);
+  Scanner(const std::filesystem::path &filename = "input.txt", bool verbose = true);
   char get_char();
   char peek_char();
   TokenData gettoken();

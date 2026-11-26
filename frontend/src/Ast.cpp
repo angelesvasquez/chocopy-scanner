@@ -15,8 +15,7 @@ using ast::Location;
 using ast::NodePtr;
 
 template <typename... Children>
-NodePtr node(std::string kind, Location location, std::string text,
-             Children... children) {
+NodePtr node(std::string kind, Location location, std::string text, Children... children) {
   auto result = std::make_unique<ast::Node>();
   result->kind = std::move(kind);
   result->location = location;
@@ -45,8 +44,7 @@ NodePtr buildSequence(LR1::AstSequence sequence) {
   return tail;
 }
 
-LR1::AstValue buildNode(const Grammar &grammar, const Production &rule,
-                        std::vector<LR1::AstValue> values) {
+LR1::AstValue buildNode(const Grammar &grammar, const Production &rule, std::vector<LR1::AstValue> values) {
   const auto &lhs = grammar.symbolTable[rule.left].name;
   const auto rhs = [&](std::size_t i) -> const std::string & {
     return grammar.symbolTable[rule.right.at(i)].name;
@@ -69,9 +67,7 @@ LR1::AstValue buildNode(const Grammar &grammar, const Production &rule,
     return child ? child->location : Location{};
   };
   const auto sequence = [&](const char *role, std::size_t next) {
-    auto items = !values.empty() && rhs(0) == lhs
-                     ? std::get<LR1::AstSequence>(std::move(values[0]))
-                     : LR1::AstSequence{role, {}};
+    auto items = !values.empty() && rhs(0) == lhs ? std::get<LR1::AstSequence>(std::move(values[0])) : LR1::AstSequence{role, {}};
     if (!values.empty())
       items.items.push_back(take(next));
     return items;
@@ -84,13 +80,11 @@ LR1::AstValue buildNode(const Grammar &grammar, const Production &rule,
   if (lhs == "program") {
     auto declarations = take(0);
     auto statements = size == 2 ? take(1) : node("Seq", {}, "statements");
-    Location start = declarations->location.line == 0 ? statements->location
-                                                      : declarations->location;
+    Location start = declarations->location.line == 0 ? statements->location : declarations->location;
     if (start.line == 0) {
       start = {1, 1};
     }
-    return node("Program", start, "", std::move(declarations),
-                std::move(statements));
+    return node("Program", start, "", std::move(declarations), std::move(statements));
   }
   if (lhs == "decl_list" || lhs == "func_decl_list")
     return sequence("declarations", 1);
@@ -132,11 +126,8 @@ LR1::AstValue buildNode(const Grammar &grammar, const Production &rule,
   if (lhs == "func_body") {
     auto declarations = take(0);
     auto statements = take(1);
-    const auto start = declarations->location.line == 0
-                           ? statements->location
-                           : declarations->location;
-    return node("Body", start, "", std::move(declarations),
-                std::move(statements));
+    const auto start = declarations->location.line == 0 ? statements->location : declarations->location;
+    return node("Body", start, "", std::move(declarations), std::move(statements));
   }
   if (lhs == "block")
     return take(2);
@@ -198,9 +189,7 @@ LR1::AstValue buildNode(const Grammar &grammar, const Production &rule,
     const auto start = at(0);
     return node("IfExpr", start, "", take(2), take(0), take(4));
   }
-  if ((lhs == "or_expr" || lhs == "and_expr" || lhs == "arith" ||
-       lhs == "term") &&
-      size == 3) {
+  if ((lhs == "or_expr" || lhs == "and_expr" || lhs == "arith" || lhs == "term") && size == 3) {
     return node("BinOp", at(1), token(1).value, take(0), take(2));
   }
   if ((lhs == "not_expr" || lhs == "unary") && size == 2) {
@@ -250,8 +239,7 @@ std::size_t utf8Length(std::string_view text, std::size_t start) {
     return 0;
 
   const unsigned char second = text[start + 1];
-  if ((first == 0xE0 && second < 0xA0) || (first == 0xED && second > 0x9F) ||
-      (first == 0xF0 && second < 0x90) || (first == 0xF4 && second > 0x8F))
+  if ((first == 0xE0 && second < 0xA0) || (first == 0xED && second > 0x9F) || (first == 0xF0 && second < 0x90) || (first == 0xF4 && second > 0x8F))
     return 0;
   for (std::size_t i = start + 1; i < start + length; ++i) {
     if ((static_cast<unsigned char>(text[i]) & 0xC0) != 0x80)
@@ -286,8 +274,7 @@ void writeNode(std::ostream &out, const ast::Node &node) {
   writeString(out, node.kind);
   out << ",\"text\":";
   writeString(out, node.text);
-  out << ",\"line\":" << node.location.line << ",\"col\":" << node.location.col
-      << ",\"type\":";
+  out << ",\"line\":" << node.location.line << ",\"col\":" << node.location.col << ",\"type\":";
   if (node.type) {
     writeString(out, *node.type);
   } else {
@@ -315,11 +302,9 @@ void writeArray(std::ostream &out, const Range &items, Writer write) {
   out << ']';
 }
 
-void writeDiagnostics(std::ostream &out,
-                      const std::vector<Diagnostic> &diagnostics) {
+void writeDiagnostics(std::ostream &out, const std::vector<Diagnostic> &diagnostics) {
   writeArray(out, diagnostics, [](auto &stream, const Diagnostic &diagnostic) {
-    stream << "{\"line\":" << diagnostic.location.line
-           << ",\"col\":" << diagnostic.location.col << ",\"message\":";
+    stream << "{\"line\":" << diagnostic.location.line << ",\"col\":" << diagnostic.location.col << ",\"message\":";
     writeString(stream, diagnostic.message);
     stream << '}';
   });
@@ -355,16 +340,14 @@ const char *symbolKind(SymbolKind kind) {
   throw std::logic_error("Simbolo desconocido.");
 }
 
-void collectScopes(const ast::Node &node, const SymbolTable &symbols,
-                   std::vector<const ast::Node *> &owners) {
+void collectScopes(const ast::Node &node, const SymbolTable &symbols, std::vector<const ast::Node *> &owners) {
   if (symbols.scopeFor(node))
     owners.push_back(&node);
   for (const auto &child : node.children)
     collectScopes(*child, symbols, owners);
 }
 
-void writeScopes(std::ostream &out, const ast::Node &ast,
-                 const SymbolTable &symbols) {
+void writeScopes(std::ostream &out, const ast::Node &ast, const SymbolTable &symbols) {
   std::vector<const ast::Node *> owners;
   collectScopes(ast, symbols, owners);
   std::unordered_map<const Scope *, std::size_t> ids;
@@ -377,8 +360,7 @@ void writeScopes(std::ostream &out, const ast::Node &ast,
     writeString(stream, owner->text);
     stream << ",\"kind\":";
     writeString(stream, scopeKind(scope->kind()));
-    stream << ",\"line\":" << owner->location.line
-           << ",\"col\":" << owner->location.col << ",\"parent\":";
+    stream << ",\"line\":" << owner->location.line << ",\"col\":" << owner->location.col << ",\"parent\":";
     if (scope->parent())
       stream << ids.at(scope->parent());
     else
@@ -395,13 +377,8 @@ void writeScopes(std::ostream &out, const ast::Node &ast,
       writeString(entry, name);
       entry << ",\"kind\":";
       writeString(entry, symbolKind(symbol.kind));
-      entry << ",\"line\":"
-            << (symbol.declaration ? symbol.declaration->location.line : 0)
-            << ",\"col\":"
-            << (symbol.declaration ? symbol.declaration->location.col : 0)
-            << ",\"type\":";
-      if (definition && definition->declaration &&
-          definition->declaration->type) {
+      entry << ",\"line\":" << (symbol.declaration ? symbol.declaration->location.line : 0) << ",\"col\":" << (symbol.declaration ? symbol.declaration->location.col : 0) << ",\"type\":";
+      if (definition && definition->declaration && definition->declaration->type) {
         writeString(entry, *definition->declaration->type);
       } else {
         entry << "null";
@@ -419,18 +396,12 @@ void writeScopes(std::ostream &out, const ast::Node &ast,
 
 void checkDestination(const fs::path &source, const fs::path &destination) {
   const bool destinationExists = fs::exists(destination);
-  const bool sameFile =
-      destinationExists && fs::exists(source)
-          ? fs::equivalent(source, destination)
-          : fs::weakly_canonical(fs::absolute(source)) ==
-                fs::weakly_canonical(fs::absolute(destination));
+  const bool sameFile = destinationExists && fs::exists(source) ? fs::equivalent(source, destination) : fs::weakly_canonical(fs::absolute(source)) == fs::weakly_canonical(fs::absolute(destination));
   if (sameFile) {
-    throw std::runtime_error(
-        "El destino del informe coincide con el archivo fuente.");
+    throw std::runtime_error("El destino del informe coincide con el archivo fuente.");
   }
   if (destinationExists && !fs::is_regular_file(destination)) {
-    throw std::runtime_error(
-        "El destino del informe no es un archivo.");
+    throw std::runtime_error("El destino del informe no es un archivo.");
   }
 }
 
@@ -457,9 +428,7 @@ ast::NodePtr parseAst(LR1 &parser, Scanner &scanner) {
   return parser.parse(&scanner, buildNode);
 }
 
-void writeCompilationReport(const CompilationReport &report,
-                            const fs::path &sourceFile,
-                            const fs::path &outputFile) {
+void writeCompilationReport(const CompilationReport &report, const fs::path &sourceFile, const fs::path &outputFile) {
   checkDestination(sourceFile, outputFile);
   std::ofstream out(outputFile, std::ios::binary);
   if (!out)
@@ -470,8 +439,7 @@ void writeCompilationReport(const CompilationReport &report,
     writeString(out, *report.sourceText);
   else
     out << "null";
-  out << ",\n  \"accepted\": " << (report.accepted ? "true" : "false")
-      << ",\n  \"diagnostics\": {\"lexical\":";
+  out << ",\n  \"accepted\": " << (report.accepted ? "true" : "false") << ",\n  \"diagnostics\": {\"lexical\":";
   writeDiagnostics(out, report.lexical);
   out << ",\"syntax\":";
   if (report.parser)
@@ -482,32 +450,29 @@ void writeCompilationReport(const CompilationReport &report,
   writeDiagnostics(out, report.semantic);
   out << "},\n  \"tokens\": ";
   if (report.parser) {
-    writeArray(out, report.parser->tokens(),
-               [](auto &stream, const TokenData &token) {
-                 stream << "{\"line\":" << token.row << ",\"col\":" << token.col
-                        << ",\"symbol\":";
-                 writeString(stream, token.symbol);
-                 stream << ",\"text\":";
-                 writeString(stream, token.value);
-                 stream << '}';
-               });
+    writeArray(out, report.parser->tokens(), [](auto &stream, const TokenData &token) {
+      stream << "{\"line\":" << token.row << ",\"col\":" << token.col << ",\"symbol\":";
+      writeString(stream, token.symbol);
+      stream << ",\"text\":";
+      writeString(stream, token.value);
+      stream << '}';
+    });
   } else {
     out << "[]";
   }
   out << ",\n  \"trace\": ";
   if (report.parser) {
-    writeArray(out, report.parser->traceRows(),
-               [](auto &stream, const TraceRow &row) {
-                 stream << "{\"states\":";
-                 writeString(stream, row.states);
-                 stream << ",\"symbols\":";
-                 writeString(stream, row.symbols);
-                 stream << ",\"input\":";
-                 writeString(stream, row.input);
-                 stream << ",\"action\":";
-                 writeString(stream, row.action);
-                 stream << '}';
-               });
+    writeArray(out, report.parser->traceRows(), [](auto &stream, const TraceRow &row) {
+      stream << "{\"states\":";
+      writeString(stream, row.states);
+      stream << ",\"symbols\":";
+      writeString(stream, row.symbols);
+      stream << ",\"input\":";
+      writeString(stream, row.input);
+      stream << ",\"action\":";
+      writeString(stream, row.action);
+      stream << '}';
+    });
   } else {
     out << "[]";
   }

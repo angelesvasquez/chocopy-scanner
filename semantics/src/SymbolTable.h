@@ -43,8 +43,7 @@ public:
 
 private:
   friend class SymbolTable;
-  Symbol *insert(const std::string &name, SymbolKind kind,
-                 const ast::Node *declaration = nullptr);
+  Symbol *insert(const std::string &name, SymbolKind kind, const ast::Node *declaration = nullptr);
 
   ScopeKind kind_;
   const Scope *parent_;
@@ -61,8 +60,7 @@ public:
   const std::vector<Diagnostic> &diagnostics() const { return diagnostics_; }
 
 private:
-  Scope &createScope(const ast::Node &owner, ScopeKind kind,
-                     const Scope *parent);
+  Scope &createScope(const ast::Node &owner, ScopeKind kind, const Scope *parent);
   Symbol *declare(const ast::Node &node, Scope &scope, SymbolKind kind);
   void registerDeclarations(const ast::Node &list, Scope &scope);
   void bindDirective(Symbol &symbol);
@@ -70,8 +68,7 @@ private:
   void visitClass(const ast::Node &node, Scope &scope);
   void visitFunction(const ast::Node &node, Scope &scope);
   void visitTarget(const ast::Node &node, Scope &scope);
-  void resolveName(const ast::Node &node, const Scope &scope,
-                   bool write = false);
+  void resolveName(const ast::Node &node, const Scope &scope, bool write = false);
   void report(const ast::Node &node, std::string message);
 
   std::unordered_map<const ast::Node *, std::unique_ptr<Scope>> scopes_;

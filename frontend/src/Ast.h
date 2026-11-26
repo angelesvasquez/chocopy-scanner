@@ -74,8 +74,6 @@ struct CompilationReport {
   const std::vector<Diagnostic> &semantic;
 };
 
-void writeCompilationReport(const CompilationReport &report,
-                            const std::filesystem::path &sourceFile,
-                            const std::filesystem::path &outputFile);
+void writeCompilationReport(const CompilationReport &report, const std::filesystem::path &sourceFile, const std::filesystem::path &outputFile);
 
 }

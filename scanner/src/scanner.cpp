@@ -61,9 +61,7 @@ static string describe_char(char ch) {
   return o.str();
 }
 
-Scanner::Scanner(const std::filesystem::path &filename, bool verbose_)
-    : pos(0), row(1), col(1), at_line_start(true), line_has_tokens(false),
-      paren_depth(0), started(false), finished(false), verbose(verbose_) {
+Scanner::Scanner(const std::filesystem::path &filename, bool verbose_) : pos(0), row(1), col(1), at_line_start(true), line_has_tokens(false), paren_depth(0), started(false), finished(false), verbose(verbose_) {
   indent_stack.push(0);
 
   ifstream file;
@@ -72,9 +70,7 @@ Scanner::Scanner(const std::filesystem::path &filename, bool verbose_)
     file.open(filename, ios::binary);
   if (!file.is_open()) {
     const auto utf8 = filename.u8string();
-    error(0, 0,
-          "No se pudo abrir el archivo '" + string(utf8.begin(), utf8.end()) +
-              "'.");
+    error(0, 0, "No se pudo abrir el archivo '" + string(utf8.begin(), utf8.end()) + "'.");
     return;
   }
   char block[4096];
@@ -103,8 +99,7 @@ char Scanner::get_char() {
 
 char Scanner::peek_char() { return pos >= buffer.size() ? '\0' : buffer[pos]; }
 
-TokenData::TokenData(string _token, string _value, int _row, int _col)
-    : token(_token), value(_value), row(_row), col(_col) {
+TokenData::TokenData(string _token, string _value, int _row, int _col) : token(_token), value(_value), row(_row), col(_col) {
   symbol = grammarSymbol();
 }
 
@@ -112,30 +107,25 @@ string TokenData::grammarSymbol() const {
   if (token == "EOF") {
     return "eof";
   }
-  if (token == "STRING" && value.size() > 2 && value.front() == '"' &&
-      value.back() == '"') {
+  if (token == "STRING" && value.size() > 2 && value.front() == '"' && value.back() == '"') {
     const auto identifierStart = [](char ch) {
       return ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
     };
-    if (identifierStart(value[1]) &&
-        all_of(value.begin() + 2, value.end() - 1, [&](char ch) {
-          return identifierStart(ch) || (ch >= '0' && ch <= '9');
-        })) {
+    if (identifierStart(value[1]) && all_of(value.begin() + 2, value.end() - 1, [&](char ch) {
+      return identifierStart(ch) || (ch >= '0' && ch <= '9');
+    })) {
       return "IDSTRING";
     }
   }
-  if (token == "ID" || token == "STRING" || token == "NEWLINE" ||
-      token == "INDENT" || token == "DEDENT" || token == "INTEGER") {
+  if (token == "ID" || token == "STRING" || token == "NEWLINE" || token == "INDENT" || token == "DEDENT" || token == "INTEGER") {
     return token;
   }
   return value;
 }
 
-void Scanner::push_token(const string &token, const string &value, int r,
-                         int c) {
+void Scanner::push_token(const string &token, const string &value, int r, int c) {
   pending.push(TokenData(token, value, r, c));
-  if (token != "INDENT" && token != "DEDENT" && token != "NEWLINE" &&
-      token != "EOF") {
+  if (token != "INDENT" && token != "DEDENT" && token != "NEWLINE" && token != "EOF") {
     line_has_tokens = true;
   }
 }
@@ -218,8 +208,7 @@ void Scanner::handle_indentation() {
 void Scanner::scan_word() {
   int r = row, c = col;
   string w;
-  while (isalnum(static_cast<unsigned char>(peek_char())) ||
-         peek_char() == '_') {
+  while (isalnum(static_cast<unsigned char>(peek_char())) || peek_char() == '_') {
     w += get_char();
   }
   map<string, string>::const_iterator it = KEYWORDS.find(w);
@@ -239,8 +228,7 @@ void Scanner::scan_number() {
 
   char nx = peek_char();
   if (isalpha(static_cast<unsigned char>(nx)) || nx == '_') {
-    while (isalnum(static_cast<unsigned char>(peek_char())) ||
-           peek_char() == '_') {
+    while (isalnum(static_cast<unsigned char>(peek_char())) || peek_char() == '_') {
       s += get_char();
     }
     error(r, c, "literal numerico mal formado '" + s + "'");
@@ -492,9 +480,7 @@ TokenData Scanner::gettoken() {
   pending.pop();
 
   if (verbose) {
-    cout << "DEBUG SCAN - "
-         << pad(t.token, t.token.size() >= 8 ? t.token.size() + 1 : 8) << "[ "
-         << pad(t.value, 6) << " ] (" << t.row << ":" << t.col << ")" << endl;
+    cout << "DEBUG SCAN - " << pad(t.token, t.token.size() >= 8 ? t.token.size() + 1 : 8) << "[ " << pad(t.value, 6) << " ] (" << t.row << ":" << t.col << ")" << endl;
   }
   if (verbose && t.token == "EOF") {
     cout << "INFO  SCAN - Completed with " << errors() << " errors" << endl;

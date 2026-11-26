@@ -230,11 +230,9 @@ bool LR1::setAction(int i, Symbol s, TypeAction t, int j) {
     }
   }
 
-  conflicts.push_back({i, s, shift ? "shift/reduce" : "reduce/reduce",
-                       action[key], newAction, causes});
+  conflicts.push_back({i, s, shift ? "shift/reduce" : "reduce/reduce", action[key], newAction, causes});
 
-  cout << "CONFLICTO " << (shift ? "shift/reduce" : "reduce/reduce")
-       << " en estado " << i << ", simbolo " << gr.symbolTable[s].name << endl;
+  cout << "CONFLICTO " << (shift ? "shift/reduce" : "reduce/reduce") << " en estado " << i << ", simbolo " << gr.symbolTable[s].name << endl;
 
   for (const Item &it : causes) {
     printItem(it);
@@ -346,8 +344,7 @@ void LR1::printState(int stateId, const State &S) {
       }
     }
 
-    std::cout << ", " << gr.symbolTable[item.lookahead].name << "]"
-              << std::endl;
+    std::cout << ", " << gr.symbolTable[item.lookahead].name << "]" << std::endl;
   }
 }
 
@@ -359,9 +356,7 @@ void LR1::printStates() {
 
   cout << "\n--- TRANSICIONES ---\n";
   for (auto &t : transitions) {
-    cout << "(CC" << t.first.first << ", "
-         << gr.symbolTable[t.first.second].name << ") --> CC" << t.second
-         << "\n";
+    cout << "(CC" << t.first.first << ", " << gr.symbolTable[t.first.second].name << ") --> CC" << t.second << "\n";
   }
 }
 
@@ -462,10 +457,7 @@ void LR1::writeJSON(ostream &f) const {
     if (i) {
       f << ",";
     }
-    f << "{\"id\":" << i << ",\"name\":\"" << escape(gr.symbolTable[i].name)
-      << "\""
-      << ",\"terminal\":" << (gr.symbolTable[i].terminal ? "true" : "false")
-      << "}";
+    f << "{\"id\":" << i << ",\"name\":\"" << escape(gr.symbolTable[i].name) << "\"" << ",\"terminal\":" << (gr.symbolTable[i].terminal ? "true" : "false") << "}";
   }
   f << "],";
 
@@ -496,8 +488,7 @@ void LR1::writeJSON(ostream &f) const {
       if (k++) {
         f << ",";
       }
-      f << "{\"production\":" << it.production << ",\"dot\":" << it.dot
-        << ",\"lookahead\":" << it.lookahead << "}";
+      f << "{\"production\":" << it.production << ",\"dot\":" << it.dot << ",\"lookahead\":" << it.lookahead << "}";
     }
     f << "]}";
   }
@@ -510,8 +501,7 @@ void LR1::writeJSON(ostream &f) const {
       if (n++) {
         f << ",";
       }
-      f << "{\"from\":" << t.first.first << ",\"symbol\":" << t.first.second
-        << ",\"to\":" << t.second << "}";
+      f << "{\"from\":" << t.first.first << ",\"symbol\":" << t.first.second << ",\"to\":" << t.second << "}";
     }
   }
   f << "],";
@@ -543,9 +533,7 @@ void LR1::writeJSON(ostream &f) const {
       if (n++) {
         f << ",";
       }
-      f << "{\"state\":" << kv.first.first << ",\"symbol\":" << kv.first.second
-        << ",\"type\":\"" << typeName(kv.second.type) << "\""
-        << ",\"value\":" << kv.second.v << "}";
+      f << "{\"state\":" << kv.first.first << ",\"symbol\":" << kv.first.second << ",\"type\":\"" << typeName(kv.second.type) << "\"" << ",\"value\":" << kv.second.v << "}";
     }
   }
   f << "],";
@@ -557,8 +545,7 @@ void LR1::writeJSON(ostream &f) const {
       if (n++) {
         f << ",";
       }
-      f << "{\"state\":" << kv.first.first << ",\"symbol\":" << kv.first.second
-        << ",\"to\":" << kv.second << "}";
+      f << "{\"state\":" << kv.first.first << ",\"symbol\":" << kv.first.second << ",\"to\":" << kv.second << "}";
     }
   }
   f << "],";
@@ -569,20 +556,12 @@ void LR1::writeJSON(ostream &f) const {
       f << ",";
     }
     const auto &c = conflicts[i];
-    f << "{\"state\":" << c.state << ",\"terminal\":" << c.terminal
-      << ",\"kind\":\"" << c.kind << "\""
-      << ",\"existing\":{\"type\":\"" << typeName(c.existing.type)
-      << "\",\"value\":" << c.existing.v << "}"
-      << ",\"incoming\":{\"type\":\"" << typeName(c.incoming.type)
-      << "\",\"value\":" << c.incoming.v << "}"
-      << ",\"causes\":[";
+    f << "{\"state\":" << c.state << ",\"terminal\":" << c.terminal << ",\"kind\":\"" << c.kind << "\"" << ",\"existing\":{\"type\":\"" << typeName(c.existing.type) << "\",\"value\":" << c.existing.v << "}" << ",\"incoming\":{\"type\":\"" << typeName(c.incoming.type) << "\",\"value\":" << c.incoming.v << "}" << ",\"causes\":[";
     for (size_t j = 0; j < c.causes.size(); j++) {
       if (j) {
         f << ",";
       }
-      f << "{\"production\":" << c.causes[j].production
-        << ",\"dot\":" << c.causes[j].dot
-        << ",\"lookahead\":" << c.causes[j].lookahead << "}";
+      f << "{\"production\":" << c.causes[j].production << ",\"dot\":" << c.causes[j].dot << ",\"lookahead\":" << c.causes[j].lookahead << "}";
     }
     f << "]}";
   }
@@ -755,13 +734,9 @@ bool LR1::panicRecover(int &pos, int &lastRecoveryPos) {
 }
 
 void LR1::reportUnexpected(int state, const TokenData &token) {
-  const string found =
-      token.symbol == "eof"
-          ? "fin de archivo"
-          : "'" + (token.value.empty() ? token.symbol : token.value) + "'";
+  const string found = token.symbol == "eof" ? "fin de archivo" : "'" + (token.value.empty() ? token.symbol : token.value) + "'";
   string expected;
-  for (auto it = action.lower_bound({state, 0});
-       it != action.end() && it->first.first == state; ++it) {
+  for (auto it = action.lower_bound({state, 0}); it != action.end() && it->first.first == state; ++it) {
     if (!expected.empty())
       expected += ", ";
     const string &name = gr.symbolTable[it->first.second].name;
@@ -805,8 +780,7 @@ ast::NodePtr LR1::parse(Scanner *scanner, AstReduction buildNode) {
         lastErrorPos = pos;
       }
       valStack.clear();
-      record(pos, "ERROR Action[" + to_string(s) + "," + la.symbol +
-                      "] vacia -> ENTRA PANICO");
+      record(pos, "ERROR Action[" + to_string(s) + "," + la.symbol + "] vacia -> ENTRA PANICO");
 
       if (!panicRecover(pos, lastRecoveryPos)) {
         return nullptr;
@@ -828,8 +802,7 @@ ast::NodePtr LR1::parse(Scanner *scanner, AstReduction buildNode) {
       record(pos, "r" + to_string(act.v));
       if (syntaxErrors.empty()) {
         const auto first = valStack.end() - pr.right.size();
-        vector<AstValue> values(std::make_move_iterator(first),
-                                std::make_move_iterator(valStack.end()));
+        vector<AstValue> values(std::make_move_iterator(first), std::make_move_iterator(valStack.end()));
         valStack.erase(first, valStack.end());
         valStack.emplace_back(buildNode(gr, pr, std::move(values)));
       }

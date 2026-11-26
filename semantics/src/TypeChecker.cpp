@@ -79,8 +79,7 @@ struct UnaryRule {
   Operand operand;
   const char *result;
 };
-constexpr UnaryRule unaryRules[] = {{"-", Operand::Int, "int"},
-                                    {"not", Operand::Bool, "bool"}};
+constexpr UnaryRule unaryRules[] = {{"-", Operand::Int, "int"}, {"not", Operand::Bool, "bool"}};
 
 struct Signature {
   std::vector<Type> parameters;
@@ -110,15 +109,13 @@ private:
   Type annotation(ast::Node &node);
   void collectHierarchy(ast::Node &declarations);
   void checkClass(ast::Node &node);
-  const Symbol *findMember(const Type &receiver,
-                           const std::string &member) const;
+  const Symbol *findMember(const Type &receiver, const std::string &member) const;
   void reportMissingMember(const ast::Node &member, const Type &receiver);
   Type parentOf(const Type &type) const;
   bool compatible(const Type &from, const Type &to) const;
   Type join(const Type &left, const Type &right) const;
   void report(const ast::Node &node, std::string message);
-  void requireCompatible(const ast::Node &node, const Type &from,
-                         const Type &to, std::string context);
+  void requireCompatible(const ast::Node &node, const Type &from, const Type &to, std::string context);
   void checkCondition(ast::Node &node);
   bool checkIf(ast::Node &node, const Type *returnType);
   bool checkStatement(ast::Node &node, const Type *returnType);
@@ -163,8 +160,7 @@ void TypeChecker::collectAnnotations(ast::Node &node) {
     return;
   }
   if (node.kind == "FuncDef") {
-    node.type =
-        node.children.size() == 3 ? annotation(*node.children[1]) : noneType;
+    node.type = node.children.size() == 3 ? annotation(*node.children[1]) : noneType;
   }
   if (node.kind == "Seq") {
     for (auto &item : ast::SequenceItems(node))
@@ -181,15 +177,12 @@ void TypeChecker::collectHierarchy(ast::Node &declarations) {
       continue;
     auto &base = *child.children.front();
     const auto *symbol = symbols_.bindingFor(base);
-    if ((base.text == "object" ||
-         (!isPrimitive(base.text) && superclasses_.count(base.text))) &&
-        symbol && symbol->kind == SymbolKind::Class) {
+    if ((base.text == "object" || (!isPrimitive(base.text) && superclasses_.count(base.text))) && symbol && symbol->kind == SymbolKind::Class) {
       superclasses_.emplace(child.text, base.text);
       base.type = base.text;
     } else {
       if (symbol)
-        report(base, "Superclase invalida '" + base.text +
-                         "': debe ser object o una clase anterior.");
+        report(base, "Superclase invalida '" + base.text + "': debe ser object o una clase anterior.");
       superclasses_.emplace(child.text, "object");
       base.type = errorType;
     }
@@ -210,11 +203,9 @@ bool TypeChecker::compatible(const Type &from, const Type &to) const {
   if (from == noneType)
     return !isPrimitive(to);
   if (isList(to)) {
-    return from == emptyType ||
-           (from == "[<None>]" && compatible(noneType, elementType(to)));
+    return from == emptyType || (from == "[<None>]" && compatible(noneType, elementType(to)));
   }
-  for (auto parent = parentOf(from); !parent.empty();
-       parent = parentOf(parent)) {
+  for (auto parent = parentOf(from); !parent.empty(); parent = parentOf(parent)) {
     if (parent == to)
       return true;
   }
@@ -228,24 +219,20 @@ Type TypeChecker::join(const Type &left, const Type &right) const {
     return right;
   if (compatible(right, left))
     return left;
-  for (auto parent = parentOf(left); !parent.empty();
-       parent = parentOf(parent)) {
+  for (auto parent = parentOf(left); !parent.empty(); parent = parentOf(parent)) {
     if (compatible(right, parent))
       return parent;
   }
   return "object";
 }
 
-void TypeChecker::requireCompatible(const ast::Node &node, const Type &from,
-                                    const Type &to, std::string context) {
+void TypeChecker::requireCompatible(const ast::Node &node, const Type &from, const Type &to, std::string context) {
   if (!compatible(from, to)) {
-    report(node, std::move(context) + ": se esperaba '" + to +
-                     "', se obtuvo '" + from + "'.");
+    report(node, std::move(context) + ": se esperaba '" + to + "', se obtuvo '" + from + "'.");
   }
 }
 
-const Symbol *TypeChecker::findMember(const Type &receiver,
-                                      const std::string &member) const {
+const Symbol *TypeChecker::findMember(const Type &receiver, const std::string &member) const {
   for (auto current = receiver; !current.empty(); current = parentOf(current)) {
     const auto *cls = symbols_.module().local(current);
     if (!cls || cls->kind != SymbolKind::Class || !cls->declaration)
@@ -257,10 +244,8 @@ const Symbol *TypeChecker::findMember(const Type &receiver,
   return nullptr;
 }
 
-void TypeChecker::reportMissingMember(const ast::Node &member,
-                                      const Type &receiver) {
-  report(member, "El tipo '" + receiver + "' no tiene el miembro '" +
-                     member.text + "'.");
+void TypeChecker::reportMissingMember(const ast::Node &member, const Type &receiver) {
+  report(member, "El tipo '" + receiver + "' no tiene el miembro '" + member.text + "'.");
 }
 
 void TypeChecker::checkClass(ast::Node &node) {
@@ -270,37 +255,26 @@ void TypeChecker::checkClass(ast::Node &node) {
       continue;
     if (member.kind == "FuncDef") {
       const auto method = signatureOf(member);
-      if (method.parameters.empty() ||
-          (method.parameters.front() != errorType &&
-           method.parameters.front() != node.text)) {
-        report(member, "El primer parametro del metodo '" + member.text +
-                           "' debe ser de tipo '" + node.text + "'.");
+      if (method.parameters.empty() || (method.parameters.front() != errorType && method.parameters.front() != node.text)) {
+        report(member, "El primer parametro del metodo '" + member.text + "' debe ser de tipo '" + node.text + "'.");
       }
-      if (member.text == "__init__" &&
-          (member.children.size() == 3 || method.parameters.size() > 1)) {
-        report(member, "'__init__' solo recibe el receptor y no declara un "
-                       "tipo de retorno.");
+      if (member.text == "__init__" && (member.children.size() == 3 || method.parameters.size() > 1)) {
+        report(member, "'__init__' solo recibe el receptor y no declara un " "tipo de retorno.");
       }
     }
     if (member.text == "__init__" && member.kind != "FuncDef") {
       report(member, "'__init__' debe ser un metodo.");
     } else if (const auto *inherited = findMember(base, member.text)) {
       if (member.kind != "FuncDef" || inherited->kind != SymbolKind::Function) {
-        report(member,
-               "No se puede redefinir el atributo o miembro heredado '" +
-                   member.text + "'.");
+        report(member, "No se puede redefinir el atributo o miembro heredado '" + member.text + "'.");
       } else {
         const auto method = signatureOf(member, true);
         const auto parentMethod = signatureOf(*inherited->declaration, true);
         const auto sameType = [](const Type &a, const Type &b) {
           return a == b || a == errorType || b == errorType;
         };
-        if (!sameType(method.result, parentMethod.result) ||
-            !std::equal(method.parameters.begin(), method.parameters.end(),
-                        parentMethod.parameters.begin(),
-                        parentMethod.parameters.end(), sameType)) {
-          report(member, "La firma del metodo '" + member.text +
-                             "' difiere de la heredada.");
+        if (!sameType(method.result, parentMethod.result) || !std::equal(method.parameters.begin(), method.parameters.end(), parentMethod.parameters.begin(), parentMethod.parameters.end(), sameType)) {
+          report(member, "La firma del metodo '" + member.text + "' difiere de la heredada.");
         }
       }
     }
@@ -318,8 +292,7 @@ bool TypeChecker::checkIf(ast::Node &node, const Type *returnType) {
   const auto checkBranch = [&](ast::Node &condition, ast::Node &body) {
     checkCondition(condition);
     const bool returns = checkStatement(body, returnType);
-    if (!nextBranchReachable ||
-        (condition.kind == "BoolLit" && condition.text == "False"))
+    if (!nextBranchReachable || (condition.kind == "BoolLit" && condition.text == "False"))
       return;
     allBranchesReturn = allBranchesReturn && returns;
     nextBranchReachable = condition.kind != "BoolLit";
@@ -344,29 +317,25 @@ bool TypeChecker::checkStatement(ast::Node &node, const Type *returnType) {
     const auto &expected = node.type.value();
     const bool returns = checkStatement(*node.children.back(), &expected);
     if (!returns && isPrimitive(expected)) {
-      report(node, "La funcion '" + node.text + "' debe devolver '" + expected +
-                       "' en todos los caminos.");
+      report(node, "La funcion '" + node.text + "' debe devolver '" + expected + "' en todos los caminos.");
     }
   } else if (kind == "ClassDef") {
     checkClass(node);
   } else if (kind == "VarDef") {
     const auto actual = infer(*node.children.at(1));
-    requireCompatible(node, actual, node.type.value(),
-                      "Inicializacion de '" + node.text + "'");
+    requireCompatible(node, actual, node.type.value(), "Inicializacion de '" + node.text + "'");
   } else if (kind == "Assign") {
     const auto from = infer(*node.children.at(1));
     auto &targets = *node.children.front();
     if (targets.kind == "Seq" && from == "[<None>]") {
-      report(node,
-             "Una lista de tipo '[<None>]' no admite asignacion multiple.");
+      report(node, "Una lista de tipo '[<None>]' no admite asignacion multiple.");
     }
     for (auto &target : ast::SequenceItems(targets)) {
       if (target.kind == "Index")
         target.type = inferIndex(target, true);
       else
         infer(target);
-      requireCompatible(target, from, target.type.value(),
-                        "Asignacion incompatible");
+      requireCompatible(target, from, target.type.value(), "Asignacion incompatible");
     }
   } else if (kind == "For") {
     auto &variable = *node.children[0];
@@ -374,13 +343,9 @@ bool TypeChecker::checkStatement(ast::Node &node, const Type *returnType) {
     const auto target = infer(variable);
     const auto source = infer(iterable);
     if (source == "str" || isList(source)) {
-      requireCompatible(variable,
-                        source == "str" ? source : elementType(source), target,
-                        "Variable de iteracion incompatible");
+      requireCompatible(variable, source == "str" ? source : elementType(source), target, "Variable de iteracion incompatible");
     } else if (source != errorType) {
-      report(iterable,
-             "Solo se puede iterar sobre una lista o str; se obtuvo '" +
-                 source + "'.");
+      report(iterable, "Solo se puede iterar sobre una lista o str; se obtuvo '" + source + "'.");
     }
     checkStatement(*node.children[2], returnType);
   } else if (kind == "While") {
@@ -391,8 +356,7 @@ bool TypeChecker::checkStatement(ast::Node &node, const Type *returnType) {
   } else if (kind == "If") {
     return checkIf(node, returnType);
   } else if (kind == "Return") {
-    const auto type =
-        node.children.empty() ? Type(noneType) : infer(*node.children.front());
+    const auto type = node.children.empty() ? Type(noneType) : infer(*node.children.front());
     if (returnType)
       requireCompatible(node, type, *returnType, "Retorno incompatible");
     else
@@ -425,15 +389,11 @@ Type TypeChecker::inferBinary(ast::Node &node) {
   if (left == errorType || right == errorType)
     return errorType;
   for (const auto &rule : binaryRules) {
-    if (rule.op == node.text && matches(rule.left, left) &&
-        matches(rule.right, right)) {
-      return rule.result.empty()
-                 ? listOf(join(elementType(left), elementType(right)))
-                 : Type(rule.result);
+    if (rule.op == node.text && matches(rule.left, left) && matches(rule.right, right)) {
+      return rule.result.empty() ? listOf(join(elementType(left), elementType(right))) : Type(rule.result);
     }
   }
-  report(node, "Operador '" + node.text + "' incompatible con '" + left +
-                   "' y '" + right + "'.");
+  report(node, "Operador '" + node.text + "' incompatible con '" + left + "' y '" + right + "'.");
   return errorType;
 }
 
@@ -450,8 +410,7 @@ Type TypeChecker::inferIndex(ast::Node &node, bool write) {
       return errorType;
     return source == "str" ? source : elementType(source);
   } else {
-    report(node, "Solo se puede indexar una lista o str; se obtuvo '" + source +
-                     "'.");
+    report(node, "Solo se puede indexar una lista o str; se obtuvo '" + source + "'.");
   }
   return errorType;
 }
@@ -472,8 +431,7 @@ Type TypeChecker::inferCall(ast::Node &node) {
       return errorType;
     symbol = findMember(receiver, callee.text);
     const auto *cls = symbols_.module().local(receiver);
-    defaultInitializer = !symbol && cls && cls->kind == SymbolKind::Class &&
-                         callee.text == "__init__";
+    defaultInitializer = !symbol && cls && cls->kind == SymbolKind::Class && callee.text == "__init__";
     if (!symbol && !defaultInitializer) {
       reportMissingMember(callee, receiver);
       return errorType;
@@ -505,20 +463,14 @@ Type TypeChecker::inferCall(ast::Node &node) {
 
   bool valid = actual.size() == signature.parameters.size();
   if (!valid) {
-    report(node, "La llamada a '" + callee.text + "' espera " +
-                     std::to_string(signature.parameters.size()) +
-                     " argumento(s), recibio " + std::to_string(actual.size()) +
-                     ".");
+    report(node, "La llamada a '" + callee.text + "' espera " + std::to_string(signature.parameters.size()) + " argumento(s), recibio " + std::to_string(actual.size()) + ".");
   }
   std::size_t i = 0;
   for (const auto &argument : arguments) {
     if (i == signature.parameters.size())
       break;
-    requireCompatible(argument, actual[i], signature.parameters[i],
-                      "Argumento " + std::to_string(i + 1) + " de '" +
-                          callee.text + "'");
-    valid = valid && actual[i] != errorType &&
-            compatible(actual[i], signature.parameters[i]);
+    requireCompatible(argument, actual[i], signature.parameters[i], "Argumento " + std::to_string(i + 1) + " de '" + callee.text + "'");
+    valid = valid && actual[i] != errorType && compatible(actual[i], signature.parameters[i]);
     ++i;
   }
   return valid ? signature.result : errorType;
@@ -548,8 +500,7 @@ Type TypeChecker::inferExpression(ast::Node &node) {
       if (rule.op == node.text && matches(rule.operand, operand))
         return rule.result;
     }
-    report(node,
-           "Operador '" + node.text + "' incompatible con '" + operand + "'.");
+    report(node, "Operador '" + node.text + "' incompatible con '" + operand + "'.");
     return errorType;
   }
   if (kind == "Id" || kind == "Member") {
@@ -566,12 +517,10 @@ Type TypeChecker::inferExpression(ast::Node &node) {
     }
     if (!symbol)
       return errorType;
-    if (symbol->kind == SymbolKind::Variable ||
-        symbol->kind == SymbolKind::Parameter) {
+    if (symbol->kind == SymbolKind::Variable || symbol->kind == SymbolKind::Parameter) {
       return symbol->declaration->type.value();
     }
-    report(node, "'" + node.text +
-                     "' solo se puede usar como destino de una llamada.");
+    report(node, "'" + node.text + "' solo se puede usar como destino de una llamada.");
     return errorType;
   }
   if (kind == "ListExpr") {
@@ -588,16 +537,14 @@ Type TypeChecker::inferExpression(ast::Node &node) {
     checkCondition(*node.children[0]);
     const auto left = infer(*node.children[1]);
     const auto right = infer(*node.children[2]);
-    return node.children[0]->type == "bool" ? join(left, right)
-                                            : Type(errorType);
+    return node.children[0]->type == "bool" ? join(left, right) : Type(errorType);
   }
   throw std::logic_error("Expresion sin regla de tipos: " + kind);
 }
 
 }
 
-std::vector<Diagnostic> checkTypes(ast::Node &program,
-                                   const SymbolTable &symbols) {
+std::vector<Diagnostic> checkTypes(ast::Node &program, const SymbolTable &symbols) {
   return TypeChecker(symbols).run(program);
 }
 

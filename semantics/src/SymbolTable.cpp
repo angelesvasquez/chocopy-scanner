@@ -5,8 +5,7 @@ namespace chocopy {
 namespace {
 
 bool isVariable(const Symbol *symbol) {
-  return symbol && (symbol->kind == SymbolKind::Variable ||
-                    symbol->kind == SymbolKind::Parameter);
+  return symbol && (symbol->kind == SymbolKind::Variable || symbol->kind == SymbolKind::Parameter);
 }
 
 bool isDirective(SymbolKind kind) {
@@ -32,15 +31,12 @@ const Symbol *Scope::lookup(const std::string &name) const {
   return nullptr;
 }
 
-Symbol *Scope::insert(const std::string &name, SymbolKind kind,
-                      const ast::Node *declaration) {
-  const auto [it, inserted] =
-      entries_.try_emplace(name, Symbol{kind, this, declaration});
+Symbol *Scope::insert(const std::string &name, SymbolKind kind, const ast::Node *declaration) {
+  const auto [it, inserted] = entries_.try_emplace(name, Symbol{kind, this, declaration});
   return inserted ? &it->second : nullptr;
 }
 
-SymbolTable::SymbolTable(const ast::Node &program)
-    : module_(&createScope(program, ScopeKind::Module, nullptr)) {
+SymbolTable::SymbolTable(const ast::Node &program) : module_(&createScope(program, ScopeKind::Module, nullptr)) {
   for (const auto *name : {"object", "int", "bool", "str"}) {
     module_->insert(name, SymbolKind::Class);
   }
@@ -63,10 +59,8 @@ const Symbol *SymbolTable::bindingFor(const ast::Node &node) const {
   return it == bindings_.end() ? nullptr : it->second;
 }
 
-Scope &SymbolTable::createScope(const ast::Node &owner, ScopeKind kind,
-                                const Scope *parent) {
-  const auto it =
-      scopes_.emplace(&owner, std::make_unique<Scope>(kind, parent)).first;
+Scope &SymbolTable::createScope(const ast::Node &owner, ScopeKind kind, const Scope *parent) {
+  const auto it = scopes_.emplace(&owner, std::make_unique<Scope>(kind, parent)).first;
   return *it->second;
 }
 
@@ -74,16 +68,14 @@ void SymbolTable::report(const ast::Node &node, std::string message) {
   diagnostics_.push_back({node.location, std::move(message)});
 }
 
-Symbol *SymbolTable::declare(const ast::Node &node, Scope &scope,
-                             SymbolKind kind) {
+Symbol *SymbolTable::declare(const ast::Node &node, Scope &scope, SymbolKind kind) {
   auto *symbol = scope.insert(node.text, kind, &node);
   if (!symbol) {
     report(node, "Nombre '" + node.text + "' redeclarado en el mismo ambito.");
     return nullptr;
   }
   const auto *global = module_->local(node.text);
-  if (scope.kind() != ScopeKind::Module && !isDirective(kind) && global &&
-      global->kind == SymbolKind::Class) {
+  if (scope.kind() != ScopeKind::Module && !isDirective(kind) && global && global->kind == SymbolKind::Class) {
     report(node, "No se puede ocultar el nombre de clase '" + node.text + "'.");
   }
   if (!isDirective(kind))
@@ -102,8 +94,7 @@ void SymbolTable::registerDeclarations(const ast::Node &list, Scope &scope) {
     } else if (kind == "ClassDef") {
       declare(declaration, scope, SymbolKind::Class);
     } else if (kind == "GlobalDecl" || kind == "NonlocalDecl") {
-      const auto directive =
-          kind == "GlobalDecl" ? SymbolKind::Global : SymbolKind::Nonlocal;
+      const auto directive = kind == "GlobalDecl" ? SymbolKind::Global : SymbolKind::Nonlocal;
       if (auto *symbol = declare(declaration, scope, directive))
         directives.push_back(symbol);
     }
@@ -119,22 +110,16 @@ void SymbolTable::bindDirective(Symbol &symbol) {
     if (symbol.scope->kind() == ScopeKind::Function && isVariable(target)) {
       symbol.target = target;
     } else {
-      report(node,
-             "'global " + node.text +
-                 "' requiere una variable declarada en el ambito global.");
+      report(node, "'global " + node.text + "' requiere una variable declarada en el ambito global.");
     }
   } else {
     const auto *parent = symbol.scope->parent();
     const auto *visible = parent ? parent->lookup(node.text) : nullptr;
     const auto *target = visible ? visible->definition() : nullptr;
-    if (symbol.scope->kind() == ScopeKind::Function && isVariable(target) &&
-        target->scope->kind() == ScopeKind::Function) {
+    if (symbol.scope->kind() == ScopeKind::Function && isVariable(target) && target->scope->kind() == ScopeKind::Function) {
       symbol.target = target;
     } else {
-      report(
-          node,
-          "'nonlocal " + node.text +
-              "' requiere una variable o parametro de una funcion envolvente.");
+      report(node, "'nonlocal " + node.text + "' requiere una variable o parametro de una funcion envolvente.");
     }
   }
   if (symbol.target)
@@ -142,8 +127,7 @@ void SymbolTable::bindDirective(Symbol &symbol) {
 }
 
 void SymbolTable::visitFunction(const ast::Node &node, Scope &scope) {
-  const Scope *parent =
-      scope.kind() == ScopeKind::Class ? scope.parent() : &scope;
+  const Scope *parent = scope.kind() == ScopeKind::Class ? scope.parent() : &scope;
   auto &function = createScope(node, ScopeKind::Function, parent);
   for (const auto &parameter : ast::SequenceItems(*node.children.front())) {
     declare(parameter, function, SymbolKind::Parameter);
@@ -162,8 +146,7 @@ void SymbolTable::visitClass(const ast::Node &node, Scope &scope) {
   visit(body, members);
 }
 
-void SymbolTable::resolveName(const ast::Node &node, const Scope &scope,
-                              bool write) {
+void SymbolTable::resolveName(const ast::Node &node, const Scope &scope, bool write) {
   const auto *binding = scope.lookup(node.text);
   if (!binding) {
     report(node, "Nombre '" + node.text + "' no declarado.");
@@ -175,10 +158,8 @@ void SymbolTable::resolveName(const ast::Node &node, const Scope &scope,
   if (write && !isVariable(target)) {
     report(node, "'" + node.text + "' no es una variable asignable.");
   } else if (write && binding->scope != &scope) {
-    const std::string directive =
-        target->scope->kind() == ScopeKind::Module ? "global" : "nonlocal";
-    report(node, "Asignar a '" + node.text + "' requiere declarar '" +
-                     directive + " " + node.text + "'.");
+    const std::string directive = target->scope->kind() == ScopeKind::Module ? "global" : "nonlocal";
+    report(node, "Asignar a '" + node.text + "' requiere declarar '" + directive + " " + node.text + "'.");
   } else {
     bindings_.emplace(&node, target);
   }

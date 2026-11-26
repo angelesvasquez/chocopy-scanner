@@ -22,8 +22,7 @@ struct Item {
   Symbol lookahead;
 
   bool operator==(const Item &i) const {
-    return (production == i.production && dot == i.dot &&
-            lookahead == i.lookahead);
+    return (production == i.production && dot == i.dot && lookahead == i.lookahead);
   }
 
   bool operator<(const Item &i) const {
@@ -119,8 +118,7 @@ public:
     vector<ast::NodePtr> items;
   };
   using AstValue = std::variant<TokenData, ast::NodePtr, AstSequence>;
-  using AstReduction = AstValue (*)(const Grammar &, const Production &,
-                                    vector<AstValue>);
+  using AstReduction = AstValue (*)(const Grammar &, const Production &, vector<AstValue>);
 
   LR1(Grammar g);
 

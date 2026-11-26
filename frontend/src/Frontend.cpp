@@ -9,15 +9,13 @@
 
 namespace {
 
-void printGroup(const char *heading,
-                const std::vector<chocopy::Diagnostic> &diagnostics) {
+void printGroup(const char *heading, const std::vector<chocopy::Diagnostic> &diagnostics) {
   if (diagnostics.empty())
     return;
   std::cout << heading << '\n';
   for (const auto &diagnostic : diagnostics) {
     if (diagnostic.location.line > 0) {
-      std::cout << "  Linea " << diagnostic.location.line << ", col "
-                << diagnostic.location.col << ": ";
+      std::cout << "  Linea " << diagnostic.location.line << ", col " << diagnostic.location.col << ": ";
     } else {
       std::cout << "  ";
     }
@@ -25,9 +23,7 @@ void printGroup(const char *heading,
   }
 }
 
-void printDiagnostics(const std::vector<chocopy::Diagnostic> &lexical,
-                      const std::vector<chocopy::Diagnostic> &syntax,
-                      const std::vector<chocopy::Diagnostic> &semantic) {
+void printDiagnostics(const std::vector<chocopy::Diagnostic> &lexical, const std::vector<chocopy::Diagnostic> &syntax, const std::vector<chocopy::Diagnostic> &semantic) {
   if (!lexical.empty() || !syntax.empty() || !semantic.empty()) {
     std::cout << "\n--- DIAGNOSTICOS ---\n";
     printGroup("Errores lexicos", lexical);
@@ -35,24 +31,19 @@ void printDiagnostics(const std::vector<chocopy::Diagnostic> &lexical,
     printGroup("Errores semanticos", semantic);
   }
 
-  std::cout << "Resumen: errores lexicos: " << lexical.size()
-            << ", errores sintacticos: " << syntax.size()
-            << ", errores semanticos: " << semantic.size() << '\n';
+  std::cout << "Resumen: errores lexicos: " << lexical.size() << ", errores sintacticos: " << syntax.size() << ", errores semanticos: " << semantic.size() << '\n';
 }
 
 }
 
-Frontend::Frontend(const std::filesystem::path &sourceFile)
-    : sourceFile(sourceFile), scanner(sourceFile, false),
-      parser(chocopy::loadChocoPyGrammar()) {}
+Frontend::Frontend(const std::filesystem::path &sourceFile) : sourceFile(sourceFile), scanner(sourceFile, false), parser(chocopy::loadChocoPyGrammar()) {}
 
 bool Frontend::run(const std::filesystem::path &reportFile) {
   ast::NodePtr ast;
   const LR1 *parsed = nullptr;
   if (scanner.errors() == 0) {
     if (!parser.build(false)) {
-      throw std::runtime_error(
-          "No se pudieron construir las tablas LR(1) de ChocoPy.");
+      throw std::runtime_error("No se pudieron construir las tablas LR(1) de ChocoPy.");
     }
 
     parser.setPanicSet({"stmt", "func_decl", "class_item", "decl_item"});
@@ -67,27 +58,18 @@ bool Frontend::run(const std::filesystem::path &reportFile) {
     symbols.emplace(*ast);
     semantic = symbols->diagnostics();
     auto types = chocopy::checkTypes(*ast, *symbols);
-    semantic.insert(semantic.end(), std::make_move_iterator(types.begin()),
-                    std::make_move_iterator(types.end()));
-    std::stable_sort(semantic.begin(), semantic.end(),
-                     [](const auto &a, const auto &b) {
-                       return std::tie(a.location.line, a.location.col) <
-                              std::tie(b.location.line, b.location.col);
-                     });
+    semantic.insert(semantic.end(), std::make_move_iterator(types.begin()), std::make_move_iterator(types.end()));
+    std::stable_sort(semantic.begin(), semantic.end(), [](const auto &a, const auto &b) {
+      return std::tie(a.location.line, a.location.col) < std::tie(b.location.line, b.location.col);
+    });
   }
 
   printDiagnostics(scanner.diagnostics(), parser.syntaxDiagnostics(), semantic);
-  const bool accepted = ast && scanner.errors() == 0 &&
-                        parser.syntaxDiagnostics().empty() && semantic.empty();
+  const bool accepted = ast && scanner.errors() == 0 && parser.syntaxDiagnostics().empty() && semantic.empty();
   std::cout << "Resultado: " << (accepted ? "ACEPTADO" : "RECHAZADO") << '\n';
-  const chocopy::CompilationReport report{
-      accepted,  parsed ? &scanner.sourceText() : nullptr,
-      ast.get(), symbols ? &*symbols : nullptr,
-      parsed,    scanner.diagnostics(),
-      semantic};
+  const chocopy::CompilationReport report{accepted, parsed ? &scanner.sourceText() : nullptr, ast.get(), symbols ? &*symbols : nullptr, parsed, scanner.diagnostics(), semantic};
   chocopy::writeCompilationReport(report, sourceFile, reportFile);
   const auto path = reportFile.u8string();
-  std::cout << "Informe guardado en " << std::string(path.begin(), path.end())
-            << '\n';
+  std::cout << "Informe guardado en " << std::string(path.begin(), path.end()) << '\n';
   return accepted;
 }
