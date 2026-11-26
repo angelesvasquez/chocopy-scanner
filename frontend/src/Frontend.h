@@ -3,23 +3,24 @@
 
 #include <filesystem>
 
-#include "../../scanner/src/scanner.h"
 #include "../../parser/src/Grammar.h"
 #include "../../parser/src/LR1.h"
+#include "../../scanner/src/scanner.h"
 
 using namespace std;
 
 class Frontend {
-    std::filesystem::path sourceFile;
-    Scanner scanner;
-    LR1 parser;
+  std::filesystem::path sourceFile;
+  Scanner scanner;
+  LR1 parser;
 
-    static Grammar loadGrammar();
+  static Grammar loadGrammar();
 
 public:
-    explicit Frontend(const std::filesystem::path& sourceFile);
+  explicit Frontend(const std::filesystem::path &sourceFile);
 
-    bool run(bool trace, const std::filesystem::path& astFile, const std::filesystem::path& reportFile);
+  bool run(bool trace, const std::filesystem::path &astFile,
+           const std::filesystem::path &reportFile);
 };
 
 #endif

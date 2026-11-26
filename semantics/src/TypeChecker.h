@@ -4,6 +4,7 @@
 
 namespace chocopy {
 
-std::vector<Diagnostic> checkTypes(ast::Node& program, const SymbolTable& symbols);
+std::vector<Diagnostic> checkTypes(ast::Node &program,
+                                   const SymbolTable &symbols);
 
 }
