@@ -14,4 +14,4 @@ struct Diagnostic {
   std::string message;
 };
 
-} // namespace chocopy
+}

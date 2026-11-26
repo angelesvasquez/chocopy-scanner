@@ -595,11 +595,11 @@ Type TypeChecker::inferExpression(ast::Node &node) {
   throw std::logic_error("Expresion sin regla de tipos: " + kind);
 }
 
-} // namespace
+}
 
 std::vector<Diagnostic> checkTypes(ast::Node &program,
                                    const SymbolTable &symbols) {
   return TypeChecker(symbols).run(program);
 }
 
-} // namespace chocopy
+}

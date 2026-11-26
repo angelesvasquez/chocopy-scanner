@@ -532,7 +532,7 @@ void writeSource(std::ostream &out, const fs::path &sourceFile) {
   writeString(out, std::string(filename.begin(), filename.end()));
 }
 
-} // namespace
+}
 
 Grammar loadChocoPyGrammar() {
   constexpr char grammarText[] = R"ChocoPyGrammar(@CHOCOPY_GRAMMAR@)ChocoPyGrammar";
@@ -646,4 +646,4 @@ void writeCompilationReport(const CompilationReport &report,
           "chocopyReport");
 }
 
-} // namespace chocopy
+}

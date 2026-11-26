@@ -80,4 +80,4 @@ private:
   Scope *module_;
 };
 
-} // namespace chocopy
+}

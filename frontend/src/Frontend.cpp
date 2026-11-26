@@ -40,7 +40,7 @@ void printDiagnostics(const std::vector<chocopy::Diagnostic> &lexical,
             << ", errores semanticos: " << semantic.size() << '\n';
 }
 
-} // namespace
+}
 
 Frontend::Frontend(const std::filesystem::path &sourceFile)
     : sourceFile(sourceFile), scanner(sourceFile, false),

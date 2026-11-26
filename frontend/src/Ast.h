@@ -52,7 +52,7 @@ private:
   NodeType *root_;
 };
 
-} // namespace ast
+}
 
 class Grammar;
 class LR1;
@@ -83,4 +83,4 @@ void writeCompilationReport(const CompilationReport &report,
                             const std::filesystem::path &sourceFile,
                             const std::filesystem::path &outputFile);
 
-} // namespace chocopy
+}

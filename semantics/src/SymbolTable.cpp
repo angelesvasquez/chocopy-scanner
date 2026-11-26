@@ -13,7 +13,7 @@ bool isDirective(SymbolKind kind) {
   return kind == SymbolKind::Global || kind == SymbolKind::Nonlocal;
 }
 
-} // namespace
+}
 
 const Symbol *Symbol::definition() const {
   return isDirective(kind) ? target : this;
@@ -222,4 +222,4 @@ void SymbolTable::visit(const ast::Node &node, Scope &scope) {
   }
 }
 
-} // namespace chocopy
+}
