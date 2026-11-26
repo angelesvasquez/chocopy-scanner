@@ -20,4 +20,4 @@ struct Node {
 
 using NodePtr = std::unique_ptr<Node>;
 
-} // namespace ast
+}

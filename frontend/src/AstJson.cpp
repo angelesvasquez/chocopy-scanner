@@ -260,7 +260,7 @@ void writeSource(std::ostream& out, const fs::path& sourceFile) {
     writeString(out, std::string(filename.begin(), filename.end()));
 }
 
-} // namespace
+}
 
 void writeAstJson(const ast::Node& root, const fs::path& sourceFile, const fs::path& outputFile) {
     std::ostringstream out;
@@ -325,4 +325,4 @@ void writeCompilationReport(const CompilationReport& report, const fs::path& sou
     publish(out.str(), sourceFile, outputFile, "report.json", "report-data.js", "chocopyReport");
 }
 
-} // namespace chocopy
+}

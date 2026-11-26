@@ -32,7 +32,7 @@ NodePtr node(std::string kind, Location location, std::string text, Children... 
     return result;
 }
 
-} // namespace
+}
 
 NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR1::AstValue> values) {
     const auto& lhs = grammar.symbolTable[rule.left].name;
@@ -187,4 +187,4 @@ void printAst(const ast::Node& node, std::ostream& output, int depth) {
     }
 }
 
-} // namespace chocopy
+}

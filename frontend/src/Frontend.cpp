@@ -40,7 +40,7 @@ void printDiagnostics(const std::vector<chocopy::Diagnostic>& lexical,
               << ", errores semanticos: " << semantic.size() << '\n';
 }
 
-} // namespace
+}
 
 Grammar Frontend::loadGrammar() {
     Grammar grammar;

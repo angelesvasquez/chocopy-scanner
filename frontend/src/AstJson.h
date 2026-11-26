@@ -24,4 +24,4 @@ void writeAstJson(const ast::Node& root, const std::filesystem::path& sourceFile
 void writeCompilationReport(const CompilationReport& report, const std::filesystem::path& sourceFile,
                             const std::filesystem::path& outputFile);
 
-} // namespace chocopy
+}

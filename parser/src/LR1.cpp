@@ -572,7 +572,6 @@ void LR1::writeJSON(ostream &f) const
 {
 	f << "{";
 
-	// symbols
 	f << "\"symbols\":[";
 	for (size_t i = 0; i < gr.symbolTable.size(); i++)
 	{
@@ -586,7 +585,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// productions
 	f << "\"productions\":[";
 	for (size_t i = 0; i < gr.productions.size(); i++)
 	{
@@ -607,7 +605,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// states
 	f << "\"states\":[";
 	for (size_t i = 0; i < states.size(); i++)
 	{
@@ -631,7 +628,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// transitions
 	f << "\"transitions\":[";
 	{
 		size_t n = 0;
@@ -648,7 +644,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// firsts
 	f << "\"firsts\":[";
 	{
 		size_t n = 0;
@@ -673,7 +668,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// action
 	f << "\"action\":[";
 	{
 		size_t n = 0;
@@ -691,7 +685,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// goto
 	f << "\"goto\":[";
 	{
 		size_t n = 0;
@@ -708,7 +701,6 @@ void LR1::writeJSON(ostream &f) const
 	}
 	f << "],";
 
-	// conflicts
 	f << "\"conflicts\":[";
 	for (size_t i = 0; i < conflicts.size(); i++)
 	{

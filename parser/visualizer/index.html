@@ -833,7 +833,6 @@
             const confMap = new Map();
             (DATA.conflicts || []).forEach(c => confMap.set(c.state + '|' + c.terminal, c));
 
-            // Cabecera
             let html = '<h2>Tabla ACTION / GOTO</h2><div class="lr-wrap"><table class="lr">';
             html += '<thead><tr>';
             html += '<th class="grp" rowspan="2">Estado</th>';
@@ -845,21 +844,17 @@
             for (const s of nonterms) html += `<th class="nt">${s.name}</th>`;
             html += '</tr></thead><tbody>';
 
-            // Filas
             for (const st of DATA.states) {
                 html += `<tr><td class="state">${st.id}</td>`;
 
-                // ACTION de terminales
                 for (const t of terminals) {
                     const cell = actIdx[st.id + '|' + t.id];
                     html += renderActionCell(cell, st.id, t.id, confMap);
                 }
-                // ACTION de eof
                 if (eofSym) {
                     const cell = actIdx[st.id + '|' + eofSym.id];
                     html += renderActionCell(cell, st.id, eofSym.id, confMap);
                 }
-                // GOTO
                 for (const n of nonterms) {
                     const to = goIdx[st.id + '|' + n.id];
                     if (to === undefined)
@@ -871,7 +866,6 @@
             }
             html += '</tbody></table></div>';
 
-            // Leyenda
             html += '<h2>Leyenda</h2>' +
                 '<div><span class="chip t">sn</span> shift al estado n &nbsp; ' +
                 '<span class="chip nt">rn</span> reduce con producción n &nbsp; ' +
