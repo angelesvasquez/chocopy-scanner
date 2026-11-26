@@ -85,17 +85,17 @@ Symbol* SymbolTable::declare(const ast::Node& node, Scope& scope, SymbolKind kin
 
 void SymbolTable::registerDeclarations(const ast::Node& list, Scope& scope) {
     std::vector<Symbol*> directives;
-    for (const auto& declaration : list.children) {
-        const auto& kind = declaration->kind;
+    for (const auto& declaration : ast::SequenceItems(list)) {
+        const auto& kind = declaration.kind;
         if (kind == "VarDef") {
-            declare(*declaration, scope, SymbolKind::Variable);
+            declare(declaration, scope, SymbolKind::Variable);
         } else if (kind == "FuncDef") {
-            declare(*declaration, scope, SymbolKind::Function);
+            declare(declaration, scope, SymbolKind::Function);
         } else if (kind == "ClassDef") {
-            declare(*declaration, scope, SymbolKind::Class);
+            declare(declaration, scope, SymbolKind::Class);
         } else if (kind == "GlobalDecl" || kind == "NonlocalDecl") {
             const auto directive = kind == "GlobalDecl" ? SymbolKind::Global : SymbolKind::Nonlocal;
-            if (auto* symbol = declare(*declaration, scope, directive)) directives.push_back(symbol);
+            if (auto* symbol = declare(declaration, scope, directive)) directives.push_back(symbol);
         }
     }
     for (auto* directive : directives) bindDirective(*directive);
@@ -128,8 +128,8 @@ void SymbolTable::visitFunction(const ast::Node& node, Scope& scope) {
     // Class members are found through the receiver, outside the lexical chain of a method.
     const Scope* parent = scope.kind() == ScopeKind::Class ? scope.parent() : &scope;
     auto& function = createScope(node, ScopeKind::Function, parent);
-    for (const auto& parameter : node.children.front()->children) {
-        declare(*parameter, function, SymbolKind::Parameter);
+    for (const auto& parameter : ast::SequenceItems(*node.children.front())) {
+        declare(parameter, function, SymbolKind::Parameter);
     }
     const auto& body = *node.children.back();
     registerDeclarations(*body.children.at(0), function);
@@ -181,12 +181,14 @@ void SymbolTable::visit(const ast::Node& node, Scope& scope) {
         const auto* type = module_->local(node.text);
         if (type && type->kind == SymbolKind::Class) bindings_.emplace(&node, type);
     } else if (node.kind == "Assign") {
-        for (const auto& target : node.children.at(0)->children) visitTarget(*target, scope);
+        for (const auto& target : ast::SequenceItems(*node.children.at(0))) visitTarget(target, scope);
         visit(*node.children.at(1), scope);
     } else if (node.kind == "For") {
         visitTarget(*node.children.at(0), scope);
         visit(*node.children.at(1), scope);
         visit(*node.children.at(2), scope);
+    } else if (node.kind == "Seq") {
+        for (const auto& item : ast::SequenceItems(node)) visit(item, scope);
     } else {
         for (const auto& child : node.children) visit(*child, scope);
     }

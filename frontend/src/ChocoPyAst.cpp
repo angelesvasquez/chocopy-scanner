@@ -8,13 +8,6 @@ namespace {
 using ast::Location;
 using ast::NodePtr;
 
-void append(ast::Node& list, NodePtr item) {
-    if (list.children.empty()) {
-        list.location = item->location;
-    }
-    list.children.push_back(std::move(item));
-}
-
 template <typename... Children>
 NodePtr node(std::string kind, Location location, std::string text, Children... children) {
     auto result = std::make_unique<ast::Node>();
@@ -32,15 +25,33 @@ NodePtr node(std::string kind, Location location, std::string text, Children... 
     return result;
 }
 
+NodePtr buildSequence(LR1::AstSequence sequence) {
+    if (sequence.items.empty()) return node("Seq", {}, sequence.role);
+
+    auto tail = std::move(sequence.items.back());
+    for (std::size_t i = sequence.items.size() - 1; i > 0; --i) {
+        auto& head = sequence.items[i - 1];
+        const auto start = head->location;
+        tail = node("Seq", start, sequence.role, std::move(head), std::move(tail));
+    }
+    return tail;
 }
 
-NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR1::AstValue> values) {
+}
+
+LR1::AstValue buildNode(const Grammar& grammar, const Production& rule, std::vector<LR1::AstValue> values) {
     const auto& lhs = grammar.symbolTable[rule.left].name;
     const auto rhs = [&](std::size_t i) -> const std::string& {
         return grammar.symbolTable[rule.right.at(i)].name;
     };
     const auto token = [&](std::size_t i) -> const TokenData& { return std::get<TokenData>(values.at(i)); };
-    const auto take = [&](std::size_t i) { return std::get<NodePtr>(std::move(values.at(i))); };
+    const auto take = [&](std::size_t i) {
+        auto& value = values.at(i);
+        if (auto* sequence = std::get_if<LR1::AstSequence>(&value)) {
+            return buildSequence(std::move(*sequence));
+        }
+        return std::get<NodePtr>(std::move(value));
+    };
     const auto at = [&](std::size_t i) -> Location {
         if (const auto* terminal = std::get_if<TokenData>(&values.at(i))) {
             return {terminal->row, terminal->col};
@@ -49,19 +60,18 @@ NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR
         return child ? child->location : Location{};
     };
     const auto sequence = [&](const char* role, std::size_t next) {
-        auto list = !values.empty() && rhs(0) == lhs ? take(0) : node("List", {}, role);
-        if (!values.empty()) {
-            append(*list, take(next));
-        }
-        return list;
+        auto items = !values.empty() && rhs(0) == lhs
+            ? std::get<LR1::AstSequence>(std::move(values[0])) : LR1::AstSequence{role, {}};
+        if (!values.empty()) items.items.push_back(take(next));
+        return items;
     };
     const auto id = [&](std::size_t i) { return node("Id", at(i), token(i).value); };
     const auto size = values.size();
 
     if (lhs == "program") {
         auto declarations = take(0);
-        auto statements = size == 2 ? take(1) : node("List", {}, "statements");
-        Location start = declarations->children.empty() ? statements->location : declarations->location;
+        auto statements = size == 2 ? take(1) : node("Seq", {}, "statements");
+        Location start = declarations->location.line == 0 ? statements->location : declarations->location;
         if (start.line == 0) {
             start = {1, 1};
         }
@@ -74,28 +84,26 @@ NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR
     if (lhs == "expr_list") return sequence("expressions", size - 1);
     if (lhs == "assign_list") return sequence("targets", size - 2);
 
-    if (lhs == "params_opt" && size == 0) return node("List", {}, "parameters");
-    if (lhs == "expr_list_opt" && size == 0) return node("List", {}, "expressions");
-    if ((lhs == "expr_opt" || lhs == "else_opt" || lhs == "ret_opt") && size == 0) return nullptr;
+    if (lhs == "params_opt" && size == 0) return node("Seq", {}, "parameters");
+    if (lhs == "expr_list_opt" && size == 0) return node("Seq", {}, "expressions");
+    if ((lhs == "expr_opt" || lhs == "else_opt" || lhs == "ret_opt") && size == 0) return NodePtr{};
     if (lhs == "ret_opt") return take(1);
     if (lhs == "else_opt") return node("Else", at(0), "", take(2));
     if (lhs == "elif_list") {
-        if (size == 0) return node("List", {}, "elif");
-        auto list = take(0);
-        append(*list, node("Elif", at(1), "", take(2), take(4)));
-        return list;
+        if (size == 0) return LR1::AstSequence{"elif", {}};
+        auto branches = std::get<LR1::AstSequence>(std::move(values[0]));
+        branches.items.push_back(node("Elif", at(1), "", take(2), take(4)));
+        return branches;
     }
 
     if (lhs == "class_def") return node("ClassDef", at(0), token(1).value, id(3), take(8));
-    if (lhs == "class_body" && size == 2) {
-        auto members = node("List", {}, "members");
-        append(*members, node("Pass", at(0), ""));
-        return members;
-    }
+    if (lhs == "class_body" && size == 2) return node("Pass", at(0), "");
     if (lhs == "func_def") return node("FuncDef", at(0), token(1).value, take(3), take(5), take(9));
     if (lhs == "func_body") {
-        const auto start = at(0).line == 0 ? at(1) : at(0);
-        return node("Body", start, "", take(0), take(1));
+        auto declarations = take(0);
+        auto statements = take(1);
+        const auto start = declarations->location.line == 0 ? statements->location : declarations->location;
+        return node("Body", start, "", std::move(declarations), std::move(statements));
     }
     if (lhs == "block") return take(2);
     if (lhs == "typed_var") return node("Param", at(0), token(0).value, take(2));
@@ -123,9 +131,10 @@ NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR
     if (lhs == "simple_stmt") {
         if (rhs(0) == "pass") return node("Pass", at(0), "");
         if (rhs(0) == "return") return node("Return", at(0), "", take(1));
-        const auto start = at(0);
-        if (size == 2) return node("Assign", start, "", take(0), take(1));
-        return node("ExprStmt", start, "", take(0));
+        auto first = take(0);
+        const auto start = first->location;
+        if (size == 2) return node("Assign", start, "", std::move(first), take(1));
+        return node("ExprStmt", start, "", std::move(first));
     }
     if (lhs == "literal") {
         const auto& symbol = rhs(0);
@@ -171,7 +180,7 @@ NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR
     }
     if ((lhs == "primary" || lhs == "target") && rhs(0) == "ID") return id(0);
 
-    if (size == 1 && std::holds_alternative<NodePtr>(values[0])) return take(0);
+    if (size == 1 && !std::holds_alternative<TokenData>(values[0])) return std::move(values[0]);
     throw std::logic_error("Produccion sin accion para el AST: " + lhs);
 }
 

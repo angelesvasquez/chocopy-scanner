@@ -20,4 +20,33 @@ struct Node {
 
 using NodePtr = std::unique_ptr<Node>;
 
+template <typename NodeType>
+class SequenceItems {
+public:
+    explicit SequenceItems(NodeType& root) : root_(&root) {}
+
+    class Iterator {
+    public:
+        explicit Iterator(NodeType* node) : node_(node) {}
+        NodeType& operator*() const {
+            return node_->kind == "Seq" ? *node_->children.front() : *node_;
+        }
+        Iterator& operator++() {
+            node_ = node_->kind == "Seq" ? node_->children.back().get() : nullptr;
+            return *this;
+        }
+        bool operator!=(const Iterator& other) const { return node_ != other.node_; }
+
+    private:
+        NodeType* node_;
+    };
+
+    bool empty() const { return root_->kind == "Seq" && root_->children.empty(); }
+    Iterator begin() const { return Iterator(empty() ? nullptr : root_); }
+    Iterator end() const { return Iterator(nullptr); }
+
+private:
+    NodeType* root_;
+};
+
 }

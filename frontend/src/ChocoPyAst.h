@@ -4,7 +4,7 @@
 
 namespace chocopy {
 
-ast::NodePtr buildNode(const Grammar& grammar, const Production& rule, std::vector<LR1::AstValue> values);
+LR1::AstValue buildNode(const Grammar& grammar, const Production& rule, std::vector<LR1::AstValue> values);
 void printAst(const ast::Node& node, std::ostream& output, int depth = 0);
 
 }

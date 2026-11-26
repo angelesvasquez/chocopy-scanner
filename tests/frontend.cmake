@@ -204,6 +204,17 @@ print(total)
     if(EXISTS "${WORK_DIR}/missing.py")
         message(FATAL_ERROR "The compiler created a report at the missing source path")
     endif()
+
+    file(WRITE "${WORK_DIR}/secuencia.py" "pass\npass\npass\n")
+    run_compiler(0 secuencia.py --ast-json secuencia.json)
+    file(READ "${WORK_DIR}/secuencia.json" sequence_json)
+    set(sequence_prefix [=["kind":"Seq","text":"statements"]=])
+    set(first_stmt [=[{"kind":"Pass","text":"","line":1,"col":1,"type":null,"children":[]}]=])
+    set(second_stmt [=[{"kind":"Pass","text":"","line":2,"col":1,"type":null,"children":[]}]=])
+    set(third_stmt [=[{"kind":"Pass","text":"","line":3,"col":1,"type":null,"children":[]}]=])
+    expect_parts("${sequence_json}"
+        "${sequence_prefix},\"line\":1,\"col\":1,\"type\":null,\"children\":[${first_stmt},{${sequence_prefix},\"line\":2,\"col\":1,\"type\":null,\"children\":[${second_stmt},${third_stmt}]}]"
+        "\"kind\":\"Seq\",\"text\":\"declarations\",\"line\":0,\"col\":0,\"type\":null,\"children\":[]")
 else()
     message(FATAL_ERROR "Unknown test suite: ${SUITE}")
 endif()

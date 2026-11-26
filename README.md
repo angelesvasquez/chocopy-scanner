@@ -23,7 +23,7 @@ Con un AST completo, el compilador comprueba los tipos de las expresiones, asign
 
 La ejecución muestra un único reporte agrupado en errores léxicos, sintácticos y semánticos, con línea y columna cuando están disponibles. Los errores sintácticos incluyen los terminales esperados y el resumen muestra el total de cada fase. Un archivo vacío se acepta como un programa sin declaraciones ni sentencias.
 
-El AST de un programa aceptado incluye las ubicaciones y los tipos inferidos. Las secuencias se muestran como listas planas.
+El AST de un programa aceptado incluye las ubicaciones y los tipos inferidos. Las secuencias se anidan a la derecha como `Seq(a, Seq(b, c))`. Una secuencia vacía es un `Seq` sin hijos y una de un solo elemento se representa por ese elemento.
 
 ### Visualizador del compilador
 

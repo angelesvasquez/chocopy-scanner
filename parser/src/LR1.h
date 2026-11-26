@@ -134,8 +134,12 @@ class LR1
 	static string escape(const string &s);
 
 public:
-	using AstValue = std::variant<TokenData, ast::NodePtr>;
-	using AstReduction = ast::NodePtr (*)(const Grammar &, const Production &, vector<AstValue>);
+	struct AstSequence {
+		const char *role;
+		vector<ast::NodePtr> items;
+	};
+	using AstValue = std::variant<TokenData, ast::NodePtr, AstSequence>;
+	using AstReduction = AstValue (*)(const Grammar &, const Production &, vector<AstValue>);
 
 	LR1(Grammar g);
 
