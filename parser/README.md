@@ -83,8 +83,10 @@ La gramática aumentada que construye el generador es:
 
 ## Visualizador
 
-`visualizer/index.html` carga automáticamente `data.js` (funciona con
-`file://`), con `lr1.json` como respaldo. Muestra el autómata, los ítems
+`visualizer/index.html` carga el `data.js` incluido en el repositorio y
+funciona con `file://`. También puede cargar `lr1.json` como respaldo cuando
+se sirve por HTTP. El generador produce ese JSON al ejecutar el parser.
+El visualizador muestra el autómata, los ítems
 agrupados por núcleo con sus lookaheads, la tabla ACTION/GOTO con celdas
 en conflicto resaltadas y los conflictos con sus causas.
 

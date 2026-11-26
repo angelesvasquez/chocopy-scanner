@@ -4,3 +4,4 @@
 /frontend/visualizer/ast-data.js
 /frontend/visualizer/report.json
 /frontend/visualizer/report-data.js
+/parser/visualizer/lr1.json
